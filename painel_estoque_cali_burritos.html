@@ -53,30 +53,91 @@
   .viz-cat-title{margin:0 0 10px;font-size:14px;color:var(--orange-dark);font-weight:700;}
   .viz-cat-block{margin-bottom:22px;}
   .jar-grid{display:flex;gap:14px;flex-wrap:wrap;}
-  .jar-wrap{display:flex;flex-direction:column;align-items:center;gap:6px;width:66px;text-align:center;}
-  .jar{position:relative;width:46px;height:66px;border-radius:8px;border:1.5px solid var(--line);background:#fff;cursor:pointer;touch-action:none;overflow:visible;}
+  .jar-wrap{display:flex;flex-direction:column;align-items:center;gap:6px;width:72px;text-align:center;}
+  .jar{position:relative;width:50px;height:66px;border-radius:8px;border:1.5px solid var(--line);background:#fff;overflow:visible;transition:outline-color .2s,opacity .2s;}
   .jar-inner{position:absolute;inset:0;border-radius:6px;overflow:hidden;background:#faf5ee;}
-  .jar-fill{position:absolute;bottom:0;left:0;right:0;background:var(--ok);}
+  .jar-fill{position:absolute;bottom:0;left:0;right:0;background:var(--ok);transition:height .15s ease;}
   .jar.b-bad{border-color:var(--bad);} .jar.b-bad .jar-fill{background:var(--bad);}
   .jar.b-warn{border-color:var(--warn);} .jar.b-warn .jar-fill{background:var(--warn);}
   .jar.b-ok{border-color:var(--ok);} .jar.b-ok .jar-fill{background:var(--ok);}
-  .jar.b-none{border-color:var(--line);background:#f5f0ea;}
-  .jar-alert{position:absolute;top:2px;right:2px;font-size:11px;line-height:1;color:#fff;background:var(--bad);border-radius:50%;width:14px;height:14px;display:flex;align-items:center;justify-content:center;z-index:2;}
+  .jar.b-none{border-color:var(--line);background:#f5f0ea;cursor:pointer;}
+  .jar.saving-jar{opacity:.7;}
+  .jar.ok-flash{outline:2px solid var(--ok);}
+  .jar.error-flash{outline:2px solid var(--bad);}
+  .jar-alert{position:absolute;top:2px;right:2px;font-size:11px;line-height:1;color:#fff;background:var(--bad);border-radius:50%;width:14px;height:14px;display:flex;align-items:center;justify-content:center;z-index:3;}
   .jar-plus{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:20px;color:var(--gray);}
   .jar-label{font-size:10.5px;color:var(--gray);line-height:1.2;}
-  .jar-value{position:absolute;top:-24px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;font-size:11px;padding:2px 6px;border-radius:6px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .15s;z-index:3;}
-  .jar-value.show{opacity:1;}
+  .jar-qty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--ink);pointer-events:none;z-index:2;text-shadow:0 1px 3px rgba(255,255,255,.85), 0 0 6px rgba(255,255,255,.6);}
+  .jar-qty .u{font-size:9px;font-weight:600;color:var(--gray);text-shadow:0 1px 2px rgba(255,255,255,.85);}
+  .jar-steppers{display:flex;gap:6px;}
+  .step-btn{width:24px;height:24px;padding:0;border-radius:50%;border:1px solid var(--line);background:#fff;font-size:15px;font-weight:700;color:var(--orange-dark);cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;}
+  .step-btn:hover{background:var(--orange);color:#fff;border-color:var(--orange);}
+  .step-btn:active{transform:scale(.92);}
   .setup-mini{display:flex;gap:4px;margin-top:2px;}
   .setup-mini input{width:34px;padding:3px;font-size:10.5px;border:1px solid var(--line);border-radius:5px;text-align:center;}
   .legend{display:flex;gap:16px;flex-wrap:wrap;padding-top:12px;margin-top:8px;border-top:1px solid var(--line);}
   .legend .dot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:5px;vertical-align:middle;}
+
+  .auth-screen{position:fixed;inset:0;background:var(--cream);display:flex;align-items:center;justify-content:center;z-index:100;padding:20px;}
+  .auth-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:28px 26px;width:100%;max-width:340px;box-shadow:0 4px 20px rgba(0,0,0,.08);text-align:center;}
+  .auth-card h1{margin:0 0 4px;font-size:19px;}
+  .auth-card p.muted{margin:0 0 16px;}
+  .auth-card input{width:100%;padding:10px 12px;margin-bottom:10px;border:1px solid var(--line);border-radius:8px;font-size:14px;}
+  .auth-card button.primary{width:100%;padding:11px;margin-top:4px;}
+  .auth-error{color:var(--bad);font-size:12.5px;min-height:16px;margin:8px 0 0;}
+  .link-btn{background:none;border:none;color:var(--orange-dark);font-size:12.5px;cursor:pointer;margin-top:10px;text-decoration:underline;padding:0;}
+  .header-row{display:flex;justify-content:space-between;align-items:center;gap:12px;}
+  .header-user{display:flex;align-items:center;gap:10px;font-size:12px;white-space:nowrap;}
+  .header-user button.ghost{background:rgba(255,255,255,.15);color:#fff;border-color:rgba(255,255,255,.4);padding:6px 12px;font-size:12px;}
+  .header-user button.ghost:hover{background:rgba(255,255,255,.28);}
+  .avisos-box{background:#fff7e6;border:1px solid var(--warn);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:13px;}
+  .avisos-box strong{color:var(--orange-dark);}
+  .avisos-box ul{margin:6px 0 0;padding-left:18px;}
+  body.role-funcionario .tab[data-tab="visao"],
+  body.role-funcionario .tab[data-tab="estoque"]{ display:none; }
+  body.role-funcionario .atual-col{ display:none; }
 </style>
 </head>
 <body>
 
+<!-- LOGIN -->
+<div id="loginScreen" class="auth-screen">
+  <div class="auth-card">
+    <h1>📦 Estoque — Cali Burritos</h1>
+    <p class="muted">Entre com seu email e senha</p>
+    <input type="email" id="loginEmail" placeholder="seu email" autocomplete="username">
+    <input type="password" id="loginPassword" placeholder="senha" autocomplete="current-password">
+    <button class="primary" id="loginBtn" type="button">Entrar</button>
+    <p class="auth-error" id="loginError"></p>
+    <button class="link-btn" id="forgotBtn" type="button">Esqueci minha senha</button>
+  </div>
+</div>
+
+<!-- DEFINIR SENHA (primeiro acesso / recuperação) -->
+<div id="setPasswordScreen" class="auth-screen hidden">
+  <div class="auth-card">
+    <h1>📦 Estoque — Cali Burritos</h1>
+    <p class="muted">Defina sua senha de acesso</p>
+    <input type="password" id="newPassword" placeholder="nova senha (mín. 6 caracteres)" autocomplete="new-password">
+    <input type="password" id="newPassword2" placeholder="confirme a senha" autocomplete="new-password">
+    <button class="primary" id="setPasswordBtn" type="button">Salvar senha e entrar</button>
+    <p class="auth-error" id="setPasswordError"></p>
+  </div>
+</div>
+
+<div id="appShell" class="hidden">
+
 <header>
-  <h1>📦 Estoque — Cali Burritos</h1>
-  <p>Conectado ao Supabase "Estoque Cali Burritos" · toda edição salva sozinha</p>
+  <div class="header-row">
+    <div>
+      <h1>📦 Estoque — Cali Burritos</h1>
+      <p>Conectado ao Supabase "Estoque Cali Burritos" · toda edição salva sozinha</p>
+    </div>
+    <div class="header-user">
+      <span id="userLabel" class="muted"></span>
+      <button class="ghost" id="logoutBtn" type="button">Sair</button>
+    </div>
+  </div>
 </header>
 
 <div class="tabs">
@@ -91,7 +152,7 @@
 
   <!-- VISÃO GERAL -->
   <section id="tab-visao">
-    <p class="hint-top">Cada pote mostra o estoque atual em relação ao máximo. Clique e arraste de baixo pra cima dentro do pote pra lançar a contagem na hora — solta e salva sozinho. Potes cinza ainda não têm mínimo/máximo definido: clique neles pra configurar.</p>
+    <p class="hint-top">Cada pote mostra a quantidade atual e a unidade. Use os botões − e + abaixo do pote para ajustar a contagem — salva sozinho alguns segundos depois do último clique. Potes cinza ainda não têm mínimo/máximo definido: clique neles pra configurar.</p>
     <div class="toolbar" id="toolbarViz">
       <input type="text" id="searchBoxViz" placeholder="Buscar produto...">
       <select id="catFilterViz"><option value="">Todas as categorias</option></select>
@@ -134,6 +195,7 @@
   <!-- CONTAGEM -->
   <section id="tab-contagem" class="hidden">
     <p class="hint-top">Digite a quantidade contada e saia do campo (Tab, Enter ou clique fora) — salva sozinho: atualiza o estoque atual e grava no histórico de contagens com a data de hoje.</p>
+    <div id="avisosBox" class="avisos-box hidden"></div>
     <div class="toolbar" id="toolbarContagem">
       <input type="text" id="searchBoxCont" placeholder="Buscar produto...">
       <select id="catFilterCont"><option value="">Todas as categorias</option></select>
@@ -141,7 +203,7 @@
     </div>
     <table>
       <thead>
-        <tr><th>Produto</th><th>Unid.</th><th>Atual (banco)</th><th>Contagem de hoje</th></tr>
+        <tr><th>Produto</th><th>Unid.</th><th class="atual-col">Atual (banco)</th><th>Contagem de hoje</th></tr>
       </thead>
       <tbody id="contagemBody"></tbody>
     </table>
@@ -158,12 +220,16 @@
   </section>
 </main>
 
+</div>
+
 <script>
 const SUPABASE_URL = "https://cfyfvmeggspahovblitr.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmeWZ2bWVnZ3NwYWhvdmJsaXRyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ3MzA2MTYsImV4cCI6MjEwMDMwNjYxNn0.DUJ97JnPRiK2or0Ii0Lpw2FfrSUXWPj7706mf6vULsY";
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let insumos = [];
+let currentUser = null;
+let currentRole = null;
 
 function toast(msg, ok=true){
   const t = document.getElementById('toast');
@@ -254,6 +320,7 @@ async function loadInsumos(){
   renderEstoque();
   renderContagem();
   updateSummary();
+  renderAvisos();
   if(lastLoadEl) lastLoadEl.textContent = 'Atualizado às ' + new Date().toLocaleTimeString('pt-BR');
   requestAnimationFrame(updateStickyOffsets);
 }
@@ -294,51 +361,60 @@ function filteredInsumos(searchId, catId){
 }
 
 // ---------- Visão Geral (jars) ----------
-function makeDraggable(jarEl, fillEl, labelEl, item){
-  let pendingVal = null;
-  function updateFromClientY(clientY){
-    const rect = jarEl.getBoundingClientRect();
-    let frac = 1 - (clientY - rect.top)/rect.height;
-    frac = Math.max(0, Math.min(1, frac));
+function stepForUnit(unidade){
+  const u = (unidade||'').toLowerCase();
+  if(['unidade','pacote','rolo','fardo','caixa'].includes(u)) return 1;
+  return 0.5;
+}
+
+const vizPendingTimers = {};
+
+function wireJarSteppers(item, jarEl, fillEl, qtyEl, minusBtn, plusBtn){
+  const step = stepForUnit(item.unidade);
+  function currentVal(){
+    return item._pending !== undefined ? item._pending : (Number(item.estoque_atual)||0);
+  }
+  function renderVal(val){
     const max = Number(item.estoque_maximo)||0;
-    let val = roundForUnit(frac*max, item.unidade);
-    fillEl.style.height = Math.min(100, max>0 ? (val/max)*100 : 0) + '%';
-    labelEl.textContent = val + ' ' + (item.unidade||'');
-    labelEl.classList.add('show');
-    return val;
+    const pct = max>0 ? Math.min(100, (val/max)*100) : 0;
+    fillEl.style.height = pct + '%';
+    qtyEl.innerHTML = roundForUnit(val, item.unidade) + '<div class="u">' + (item.unidade||'') + '</div>';
   }
-  jarEl.addEventListener('pointerdown', e=>{
-    jarEl.setPointerCapture(e.pointerId);
-    pendingVal = updateFromClientY(e.clientY);
-  });
-  jarEl.addEventListener('pointermove', e=>{
-    if(pendingVal===null) return;
-    pendingVal = updateFromClientY(e.clientY);
-  });
-  async function finish(){
-    if(pendingVal===null) return;
-    const val = pendingVal;
-    pendingVal = null;
-    labelEl.classList.remove('show');
-    const { error } = await saveContagem(item, val);
-    if(error){
-      jarEl.style.outline = '2px solid var(--bad)';
-      setTimeout(()=> jarEl.style.outline = '', 800);
-      toast('Erro ao salvar: ' + error.message, false);
-      return;
-    }
-    const s = statusOf(item);
-    jarEl.className = 'jar ' + s.cls;
-    const alertEl = jarEl.querySelector('.jar-alert');
-    if(s.label==='repor' && !alertEl){
-      const a = document.createElement('div'); a.className='jar-alert'; a.textContent='!'; jarEl.appendChild(a);
-    } else if(s.label!=='repor' && alertEl){
-      alertEl.remove();
-    }
-    toast('Salvo: ' + item.produto + ' — ' + val + ' ' + (item.unidade||''));
+  function adjust(delta){
+    let val = currentVal() + delta;
+    val = Math.max(0, roundForUnit(val, item.unidade));
+    item._pending = val;
+    renderVal(val);
+    if(vizPendingTimers[item.id]) clearTimeout(vizPendingTimers[item.id]);
+    vizPendingTimers[item.id] = setTimeout(()=> commitJar(item, jarEl, val), 700);
   }
-  jarEl.addEventListener('pointerup', finish);
-  jarEl.addEventListener('pointercancel', ()=>{ pendingVal=null; labelEl.classList.remove('show'); });
+  minusBtn.addEventListener('click', ()=> adjust(-step));
+  plusBtn.addEventListener('click', ()=> adjust(step));
+}
+
+async function commitJar(item, jarEl, val){
+  jarEl.classList.add('saving-jar');
+  const { error } = await saveContagem(item, val);
+  jarEl.classList.remove('saving-jar');
+  delete item._pending;
+  if(error){
+    jarEl.classList.add('error-flash');
+    setTimeout(()=> jarEl.classList.remove('error-flash'), 900);
+    toast('Erro ao salvar ' + item.produto + ': ' + error.message, false);
+    return;
+  }
+  jarEl.classList.add('ok-flash');
+  setTimeout(()=> jarEl.classList.remove('ok-flash'), 900);
+  const s = statusOf(item);
+  jarEl.classList.remove('b-ok','b-warn','b-bad','b-none');
+  jarEl.classList.add(s.cls);
+  const alertEl = jarEl.querySelector('.jar-alert');
+  if(s.label==='repor' && !alertEl){
+    const a = document.createElement('div'); a.className='jar-alert'; a.textContent='!'; jarEl.appendChild(a);
+  } else if(s.label!=='repor' && alertEl){
+    alertEl.remove();
+  }
+  toast('Salvo: ' + item.produto + ' — ' + val + ' ' + (item.unidade||''));
 }
 
 function renderVisaoGeral(){
@@ -370,16 +446,22 @@ function renderVisaoGeral(){
       const pct = Math.min(100, (atual/max)*100);
       wrap.innerHTML = `
         <div class="jar ${s.cls}">
-          <div class="jar-value"></div>
           <div class="jar-inner"><div class="jar-fill" style="height:${pct}%"></div></div>
+          <div class="jar-qty">${roundForUnit(atual, item.unidade)}<div class="u">${item.unidade||''}</div></div>
           ${s.label==='repor' ? '<div class="jar-alert">!</div>' : ''}
+        </div>
+        <div class="jar-steppers">
+          <button class="step-btn minus" type="button">−</button>
+          <button class="step-btn plus" type="button">+</button>
         </div>
         <span class="jar-label">${item.produto}</span>
       `;
       const jarEl = wrap.querySelector('.jar');
       const fillEl = wrap.querySelector('.jar-fill');
-      const labelEl = wrap.querySelector('.jar-value');
-      makeDraggable(jarEl, fillEl, labelEl, item);
+      const qtyEl = wrap.querySelector('.jar-qty');
+      const minusBtn = wrap.querySelector('.step-btn.minus');
+      const plusBtn = wrap.querySelector('.step-btn.plus');
+      wireJarSteppers(item, jarEl, fillEl, qtyEl, minusBtn, plusBtn);
     } else {
       wrap.innerHTML = `
         <div class="jar b-none" title="Clique para definir mínimo/máximo">
@@ -502,7 +584,7 @@ function renderContagem(){
     tr.innerHTML = `
       <td>${item.produto}</td>
       <td>${item.unidade||'—'}</td>
-      <td class="atual-cell">${item.estoque_atual ?? 0}</td>
+      <td class="atual-cell atual-col">${item.estoque_atual ?? 0}</td>
       <td><input class="num" type="number" step="any" placeholder="qtd contada"><span class="save-dot"></span></td>
     `;
     const input = tr.querySelector('input.num');
@@ -530,6 +612,20 @@ function renderContagem(){
   }
   document.getElementById('dataContagem').textContent = 'Data da contagem: ' + new Date().toLocaleDateString('pt-BR');
   requestAnimationFrame(updateStickyOffsets);
+}
+
+function renderAvisos(){
+  const box = document.getElementById('avisosBox');
+  if(!box) return;
+  const need = insumos.filter(i=>{
+    const min = Number(i.estoque_minimo)||0;
+    const atual = Number(i.estoque_atual)||0;
+    return min>0 && atual<=min;
+  });
+  if(need.length===0){ box.classList.add('hidden'); box.innerHTML=''; return; }
+  box.classList.remove('hidden');
+  box.innerHTML = '⚠️ <strong>' + need.length + ' ite' + (need.length===1?'m':'ns') + ' no mínimo ou abaixo — considere repor</strong><ul>' +
+    need.map(i=>`<li>${i.produto}</li>`).join('') + '</ul>';
 }
 
 function gerarListaCompras(){
@@ -591,7 +687,102 @@ document.querySelectorAll('.tab').forEach(tab=>{
 });
 
 window.addEventListener('load', updateStickyOffsets);
-loadInsumos();
+
+// ---------- Auth ----------
+function showScreen(name){ // 'login' | 'setPassword' | 'app'
+  document.getElementById('loginScreen').classList.toggle('hidden', name!=='login');
+  document.getElementById('setPasswordScreen').classList.toggle('hidden', name!=='setPassword');
+  document.getElementById('appShell').classList.toggle('hidden', name!=='app');
+}
+
+async function fetchRole(userId){
+  const { data, error } = await db.from('profiles').select('role').eq('id', userId).single();
+  if(error){ console.error(error); return 'funcionario'; }
+  return data?.role || 'funcionario';
+}
+
+function applyRoleUI(){
+  document.body.classList.toggle('role-funcionario', currentRole !== 'admin');
+  if(currentRole !== 'admin'){
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('main > section').forEach(s=>s.classList.add('hidden'));
+    document.querySelector('.tab[data-tab="contagem"]').classList.add('active');
+    document.getElementById('tab-contagem').classList.remove('hidden');
+  }
+  requestAnimationFrame(updateStickyOffsets);
+}
+
+async function afterLogin(){
+  const { data: { user } } = await db.auth.getUser();
+  currentUser = user;
+  currentRole = await fetchRole(user.id);
+  document.getElementById('userLabel').textContent = (currentUser.email||'') + (currentRole==='admin' ? ' · admin' : ' · funcionário');
+  applyRoleUI();
+  showScreen('app');
+  loadInsumos();
+}
+
+document.getElementById('loginBtn').addEventListener('click', async ()=>{
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const errEl = document.getElementById('loginError');
+  errEl.style.color = 'var(--bad)';
+  errEl.textContent = '';
+  if(!email || !password){ errEl.textContent = 'Preencha email e senha.'; return; }
+  const { error } = await db.auth.signInWithPassword({ email, password });
+  if(error){ errEl.textContent = 'Email ou senha incorretos.'; return; }
+});
+document.getElementById('loginEmail').addEventListener('keydown', e=>{ if(e.key==='Enter') document.getElementById('loginPassword').focus(); });
+document.getElementById('loginPassword').addEventListener('keydown', e=>{ if(e.key==='Enter') document.getElementById('loginBtn').click(); });
+
+document.getElementById('forgotBtn').addEventListener('click', async ()=>{
+  const email = document.getElementById('loginEmail').value.trim();
+  const errEl = document.getElementById('loginError');
+  if(!email){ errEl.style.color = 'var(--bad)'; errEl.textContent = 'Digite seu email acima primeiro.'; return; }
+  const { error } = await db.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + window.location.pathname });
+  errEl.style.color = error ? 'var(--bad)' : 'var(--ok)';
+  errEl.textContent = error ? 'Erro ao enviar: ' + error.message : 'Email de recuperação enviado!';
+});
+
+document.getElementById('setPasswordBtn').addEventListener('click', async ()=>{
+  const p1 = document.getElementById('newPassword').value;
+  const p2 = document.getElementById('newPassword2').value;
+  const errEl = document.getElementById('setPasswordError');
+  errEl.textContent = '';
+  if(p1.length < 6){ errEl.textContent = 'A senha precisa ter pelo menos 6 caracteres.'; return; }
+  if(p1 !== p2){ errEl.textContent = 'As senhas não coincidem.'; return; }
+  const { error } = await db.auth.updateUser({ password: p1 });
+  if(error){ errEl.textContent = 'Erro: ' + error.message; return; }
+  history.replaceState(null, '', window.location.pathname);
+  await afterLogin();
+});
+
+document.getElementById('logoutBtn').addEventListener('click', async ()=>{
+  await db.auth.signOut();
+  currentUser = null; currentRole = null;
+  document.getElementById('loginEmail').value = '';
+  document.getElementById('loginPassword').value = '';
+  showScreen('login');
+});
+
+db.auth.onAuthStateChange((event)=>{
+  if(event === 'PASSWORD_RECOVERY'){ showScreen('setPassword'); }
+});
+
+(async function initAuth(){
+  const hash = new URLSearchParams(window.location.hash.slice(1));
+  const authType = hash.get('type');
+  const { data: { session } } = await db.auth.getSession();
+  if(session && (authType === 'invite' || authType === 'recovery')){
+    showScreen('setPassword');
+    return;
+  }
+  if(session){
+    await afterLogin();
+    return;
+  }
+  showScreen('login');
+})();
 </script>
 </body>
 </html>
