@@ -94,8 +94,8 @@
   .avisos-box strong{color:var(--orange-dark);}
   .avisos-box ul{margin:6px 0 0;padding-left:18px;}
   body.role-funcionario .tab[data-tab="visao"],
-  body.role-funcionario .tab[data-tab="estoque"]{ display:none; }
-  body.role-funcionario .atual-col{ display:none; }
+  body.role-funcionario .tab[data-tab="estoque"],
+  body.role-funcionario .tab[data-tab="historico"]{ display:none; }
 </style>
 </head>
 <body>
@@ -145,6 +145,7 @@
   <button class="tab" data-tab="estoque">Estoque (min/máx)</button>
   <button class="tab" data-tab="contagem">Lançar Contagem</button>
   <button class="tab" data-tab="compras">Lista de Compras</button>
+  <button class="tab" data-tab="historico">Histórico</button>
 </div>
 
 <main>
@@ -194,19 +195,14 @@
 
   <!-- CONTAGEM -->
   <section id="tab-contagem" class="hidden">
-    <p class="hint-top">Digite a quantidade contada e saia do campo (Tab, Enter ou clique fora) — salva sozinho: atualiza o estoque atual e grava no histórico de contagens com a data de hoje.</p>
+    <p class="hint-top">Use os botões − e + de cada pote para ajustar a contagem — salva sozinho alguns segundos depois do último clique e grava no histórico com a data de hoje.</p>
     <div id="avisosBox" class="avisos-box hidden"></div>
     <div class="toolbar" id="toolbarContagem">
       <input type="text" id="searchBoxCont" placeholder="Buscar produto...">
       <select id="catFilterCont"><option value="">Todas as categorias</option></select>
       <span class="muted" id="dataContagem"></span>
     </div>
-    <table>
-      <thead>
-        <tr><th>Produto</th><th>Unid.</th><th class="atual-col">Atual (banco)</th><th>Contagem de hoje</th></tr>
-      </thead>
-      <tbody id="contagemBody"></tbody>
-    </table>
+    <div id="contagemContainer"></div>
   </section>
 
   <!-- LISTA DE COMPRAS -->
@@ -217,6 +213,20 @@
     </div>
     <div id="listaCompras"></div>
     <textarea id="copyArea" class="hidden"></textarea>
+  </section>
+
+  <!-- HISTÓRICO -->
+  <section id="tab-historico" class="hidden">
+    <p class="hint-top">Registro de todas as alterações no estoque e nas contagens, com usuário e data/hora — para conferência.</p>
+    <div class="toolbar" id="toolbarHistorico">
+      <button class="ghost" id="refreshHistoricoBtn">🔄 Recarregar</button>
+    </div>
+    <table>
+      <thead>
+        <tr><th>Data/Hora</th><th>Usuário</th><th>Registro</th><th>Ação</th><th>O que mudou</th></tr>
+      </thead>
+      <tbody id="historicoBody"></tbody>
+    </table>
   </section>
 </main>
 
@@ -417,9 +427,7 @@ async function commitJar(item, jarEl, val){
   toast('Salvo: ' + item.produto + ' — ' + val + ' ' + (item.unidade||''));
 }
 
-function renderVisaoGeral(){
-  const list = filteredInsumos('searchBoxViz','catFilterViz');
-  const container = document.getElementById('vizContainer');
+function renderJarGrid(container, list, allowSetup){
   container.innerHTML = '';
   let lastCat = null, grid = null;
   list.forEach(item=>{
@@ -442,8 +450,8 @@ function renderVisaoGeral(){
     const s = statusOf(item);
     const wrap = document.createElement('div');
     wrap.className = 'jar-wrap';
-    if(max>0){
-      const pct = Math.min(100, (atual/max)*100);
+    if(max>0 || !allowSetup){
+      const pct = max>0 ? Math.min(100, (atual/max)*100) : 0;
       wrap.innerHTML = `
         <div class="jar ${s.cls}">
           <div class="jar-inner"><div class="jar-fill" style="height:${pct}%"></div></div>
@@ -489,7 +497,7 @@ function renderVisaoGeral(){
           item[field] = val;
           inp.dataset.last = inp.value;
           toast('Salvo: ' + item.produto);
-          if(Number(item.estoque_minimo)>0 && Number(item.estoque_maximo)>0){ renderVisaoGeral(); renderEstoque(); updateSummary(); }
+          if(Number(item.estoque_minimo)>0 && Number(item.estoque_maximo)>0){ renderVisaoGeral(); renderContagem(); renderEstoque(); updateSummary(); }
         });
         inp.addEventListener('keydown', e=>{ if(e.key==='Enter') inp.blur(); });
       });
@@ -500,6 +508,11 @@ function renderVisaoGeral(){
     container.innerHTML = '<p class="muted" style="text-align:center;padding:30px;">Nenhum insumo encontrado</p>';
   }
   requestAnimationFrame(updateStickyOffsets);
+}
+
+function renderVisaoGeral(){
+  const list = filteredInsumos('searchBoxViz','catFilterViz');
+  renderJarGrid(document.getElementById('vizContainer'), list, true);
 }
 
 // ---------- Estoque (table) ----------
@@ -565,52 +578,67 @@ function renderEstoque(){
   requestAnimationFrame(updateStickyOffsets);
 }
 
-// ---------- Lançar Contagem (table) ----------
+// ---------- Lançar Contagem (jarras) ----------
 function renderContagem(){
   const list = filteredInsumos('searchBoxCont','catFilterCont');
-  const body = document.getElementById('contagemBody');
-  body.innerHTML = '';
-  let lastCat = null;
-  list.forEach(item=>{
-    const cat = item.categoria || 'Sem categoria';
-    if(cat !== lastCat){
-      const trc = document.createElement('tr');
-      trc.className = 'cat-row';
-      trc.innerHTML = `<td colspan="4">${cat}</td>`;
-      body.appendChild(trc);
-      lastCat = cat;
-    }
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${item.produto}</td>
-      <td>${item.unidade||'—'}</td>
-      <td class="atual-cell atual-col">${item.estoque_atual ?? 0}</td>
-      <td><input class="num" type="number" step="any" placeholder="qtd contada"><span class="save-dot"></span></td>
-    `;
-    const input = tr.querySelector('input.num');
-    const dot = tr.querySelector('.save-dot');
-    input.dataset.last = '';
-    const save = async ()=>{
-      if(input.value === '' || input.value === input.dataset.last) return;
-      const qtd = parseFloat(input.value);
-      if(isNaN(qtd)) return;
-      input.classList.add('saving');
-      const { error } = await saveContagem(item, qtd);
-      input.classList.remove('saving');
-      if(error){ flashInput(input,false); flashDot(dot,false); toast('Erro ao salvar contagem: ' + error.message, false); return; }
-      tr.querySelector('.atual-cell').textContent = qtd;
-      input.dataset.last = input.value;
-      flashInput(input, true);
-      flashDot(dot, true);
-    };
-    input.addEventListener('blur', save);
-    input.addEventListener('keydown', e=>{ if(e.key==='Enter'){ input.blur(); } });
-    body.appendChild(tr);
-  });
-  if(list.length===0){
-    body.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:30px;color:#999;">Nenhum insumo encontrado</td></tr>';
-  }
+  renderJarGrid(document.getElementById('contagemContainer'), list, currentRole==='admin');
   document.getElementById('dataContagem').textContent = 'Data da contagem: ' + new Date().toLocaleDateString('pt-BR');
+}
+
+// ---------- Histórico (audit log) ----------
+function tabelaLabel(t){ return t==='insumos' ? 'Estoque' : (t==='contagens' ? 'Contagem' : t); }
+function acaoLabel(a){ return {insert:'criado', update:'alterado', delete:'excluído'}[a] || a; }
+
+function produtoDoRegistro(entry){
+  if(entry.tabela === 'insumos'){
+    const item = insumos.find(i=>i.id===entry.registro_id);
+    return item ? item.produto : (entry.dados_novos?.produto || entry.dados_antigos?.produto || '—');
+  }
+  if(entry.tabela === 'contagens'){
+    const insumoId = entry.dados_novos?.insumo_id || entry.dados_antigos?.insumo_id;
+    const item = insumos.find(i=>i.id===insumoId);
+    return item ? item.produto : '—';
+  }
+  return '—';
+}
+
+const HIST_DIFF_FIELDS = ['estoque_minimo','estoque_maximo','estoque_atual','quantidade'];
+function diffResumo(entry){
+  if(entry.acao === 'insert'){
+    const n = entry.dados_novos || {};
+    if(entry.tabela==='contagens') return 'contagem registrada: ' + (n.quantidade ?? '—');
+    return 'registro criado';
+  }
+  if(entry.acao === 'delete') return 'registro excluído';
+  const a = entry.dados_antigos || {}, n = entry.dados_novos || {};
+  const parts = [];
+  HIST_DIFF_FIELDS.forEach(f=>{
+    if(f in n && String(a[f]) !== String(n[f])){
+      parts.push(f + ': ' + (a[f] ?? '—') + ' → ' + (n[f] ?? '—'));
+    }
+  });
+  return parts.length ? parts.join(', ') : 'sem mudança relevante';
+}
+
+async function loadHistorico(){
+  const body = document.getElementById('historicoBody');
+  if(!body) return;
+  body.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:#999;">Carregando...</td></tr>';
+  const { data, error } = await db.from('audit_log').select('*').order('created_at', {ascending:false}).limit(200);
+  if(error){ body.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:#999;">Erro: ' + error.message + '</td></tr>'; return; }
+  if(!data || data.length===0){ body.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:#999;">Nenhum registro ainda</td></tr>'; return; }
+  body.innerHTML = data.map(entry=>{
+    const dt = new Date(entry.created_at).toLocaleString('pt-BR');
+    const user = entry.usuario_email || 'sistema';
+    const badgeCls = entry.acao==='delete' ? 'b-bad' : (entry.acao==='insert' ? 'b-ok' : 'b-warn');
+    return `<tr>
+      <td>${dt}</td>
+      <td>${user}</td>
+      <td>${tabelaLabel(entry.tabela)} — ${produtoDoRegistro(entry)}</td>
+      <td><span class="badge ${badgeCls}">${acaoLabel(entry.acao)}</span></td>
+      <td>${diffResumo(entry)}</td>
+    </tr>`;
+  }).join('');
   requestAnimationFrame(updateStickyOffsets);
 }
 
@@ -665,6 +693,7 @@ document.getElementById('catFilter').addEventListener('change', renderEstoque);
 document.getElementById('searchBoxCont').addEventListener('input', renderContagem);
 document.getElementById('catFilterCont').addEventListener('change', renderContagem);
 document.getElementById('refreshBtn').addEventListener('click', loadInsumos);
+document.getElementById('refreshHistoricoBtn').addEventListener('click', loadHistorico);
 document.getElementById('gerarListaBtn').addEventListener('click', gerarListaCompras);
 document.getElementById('copiarListaBtn').addEventListener('click', ()=>{
   const area = document.getElementById('copyArea');
@@ -682,6 +711,7 @@ document.querySelectorAll('.tab').forEach(tab=>{
     tab.classList.add('active');
     document.querySelectorAll('main > section').forEach(s=>s.classList.add('hidden'));
     document.getElementById('tab-' + tab.dataset.tab).classList.remove('hidden');
+    if(tab.dataset.tab === 'historico'){ loadHistorico(); }
     requestAnimationFrame(updateStickyOffsets);
   });
 });
