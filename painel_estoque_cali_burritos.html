@@ -12,51 +12,76 @@
   }
   *{box-sizing:border-box;}
   body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--cream);color:var(--ink);}
-  header{background:linear-gradient(135deg,var(--orange),var(--orange-dark));color:#fff;padding:18px 24px;position:sticky;top:0;z-index:20;box-shadow:0 2px 8px rgba(0,0,0,.15);}
-  header h1{margin:0;font-size:20px;}
-  header p{margin:4px 0 0;font-size:13px;opacity:.9;}
-  .tabs{display:flex;gap:6px;padding:10px 24px 0;background:var(--orange-dark);}
-  .tab{padding:10px 16px;border-radius:8px 8px 0 0;background:rgba(255,255,255,.15);color:#fff;cursor:pointer;font-size:14px;font-weight:600;border:none;}
+  header{background:linear-gradient(135deg,var(--orange),var(--orange-dark));color:#fff;padding:14px 24px;position:sticky;top:0;z-index:30;box-shadow:0 2px 8px rgba(0,0,0,.15);}
+  header h1{margin:0;font-size:19px;}
+  header p{margin:3px 0 0;font-size:12px;opacity:.9;}
+  .tabs{display:flex;gap:6px;padding:8px 24px 0;background:var(--orange-dark);position:sticky;z-index:29;}
+  .tab{padding:9px 16px;border-radius:8px 8px 0 0;background:rgba(255,255,255,.15);color:#fff;cursor:pointer;font-size:14px;font-weight:600;border:none;}
   .tab.active{background:var(--cream);color:var(--orange-dark);}
-  main{padding:20px 24px 60px;max-width:1200px;margin:0 auto;}
-  .summary{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;}
+  main{padding:16px 24px 60px;max-width:1200px;margin:0 auto;}
+  .summary{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px;}
   .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 16px;min-width:140px;}
   .card .n{font-size:22px;font-weight:700;}
   .card .l{font-size:12px;color:var(--gray);}
-  .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px;}
+  .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:0;padding:10px 0;background:var(--cream);position:sticky;z-index:28;}
   input[type=text],select{padding:8px 10px;border:1px solid var(--line);border-radius:8px;font-size:14px;background:#fff;}
   button.primary{background:var(--orange);color:#fff;border:none;padding:9px 14px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;}
   button.primary:hover{background:var(--orange-dark);}
   button.ghost{background:#fff;border:1px solid var(--line);padding:8px 12px;border-radius:8px;cursor:pointer;font-size:13px;}
   table{width:100%;border-collapse:collapse;background:var(--card);border-radius:10px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06);}
-  th{background:#f3e9de;text-align:left;padding:10px 8px;font-size:12px;color:var(--gray);position:sticky;top:96px;}
-  td{padding:8px;border-top:1px solid var(--line);font-size:13px;vertical-align:middle;}
-  tr.cat-row td{background:#f8f1ea;font-weight:700;color:var(--orange-dark);font-size:13px;padding:8px;}
-  input.num{width:72px;padding:6px;border:1px solid var(--line);border-radius:6px;text-align:right;font-size:13px;}
+  th{background:#f3e9de;text-align:left;padding:10px 8px;font-size:12px;color:var(--gray);position:sticky;z-index:26;box-shadow:0 1px 0 var(--line);}
+  td{padding:7px 8px;border-top:1px solid var(--line);font-size:13px;vertical-align:middle;}
+  tr.cat-row td{background:#f8f1ea;font-weight:700;color:var(--orange-dark);font-size:12px;padding:6px 8px;position:sticky;z-index:25;box-shadow:0 1px 0 var(--line);}
+  input.num{width:72px;padding:6px;border:1px solid var(--line);border-radius:6px;text-align:right;font-size:13px;transition:background .2s,border-color .2s;}
   input.num:focus{outline:2px solid var(--orange);border-color:var(--orange);}
+  input.num.saving{background:#fff7e6;border-color:var(--warn);}
+  input.num.saved{background:#eafaf0;border-color:var(--ok);}
+  input.num.error{background:#fdeceb;border-color:var(--bad);}
   .badge{display:inline-block;padding:3px 8px;border-radius:20px;font-size:11px;font-weight:700;color:#fff;}
   .b-ok{background:var(--ok);} .b-warn{background:var(--warn);} .b-bad{background:var(--bad);} .b-none{background:#b9b0a6;}
-  .save-hint{font-size:11px;color:var(--ok);margin-left:6px;opacity:0;transition:opacity .3s;}
-  .save-hint.show{opacity:1;}
-  .rowbtn{padding:5px 10px;font-size:12px;border-radius:6px;border:1px solid var(--orange);background:#fff;color:var(--orange-dark);cursor:pointer;}
-  .rowbtn:hover{background:var(--orange);color:#fff;}
+  .save-dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-left:4px;vertical-align:middle;opacity:0;transition:opacity .25s;}
+  .save-dot.show-ok{opacity:1;background:var(--ok);}
+  .save-dot.show-err{opacity:1;background:var(--bad);}
   .hidden{display:none !important;}
   .list-item{background:#fff;border:1px solid var(--line);border-radius:8px;padding:10px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;}
   #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;opacity:0;pointer-events:none;transition:opacity .3s;z-index:50;}
   #toast.show{opacity:1;}
   .muted{color:var(--gray);font-size:12px;}
+  .hint-top{font-size:11.5px;color:var(--gray);margin:0 0 10px;}
   textarea#copyArea{width:100%;min-height:160px;border:1px solid var(--line);border-radius:8px;padding:10px;font-family:monospace;font-size:12px;}
+
+  .viz-cat-title{margin:0 0 10px;font-size:14px;color:var(--orange-dark);font-weight:700;}
+  .viz-cat-block{margin-bottom:22px;}
+  .jar-grid{display:flex;gap:14px;flex-wrap:wrap;}
+  .jar-wrap{display:flex;flex-direction:column;align-items:center;gap:6px;width:66px;text-align:center;}
+  .jar{position:relative;width:46px;height:66px;border-radius:8px;border:1.5px solid var(--line);background:#fff;cursor:pointer;touch-action:none;overflow:visible;}
+  .jar-inner{position:absolute;inset:0;border-radius:6px;overflow:hidden;background:#faf5ee;}
+  .jar-fill{position:absolute;bottom:0;left:0;right:0;background:var(--ok);}
+  .jar.b-bad{border-color:var(--bad);} .jar.b-bad .jar-fill{background:var(--bad);}
+  .jar.b-warn{border-color:var(--warn);} .jar.b-warn .jar-fill{background:var(--warn);}
+  .jar.b-ok{border-color:var(--ok);} .jar.b-ok .jar-fill{background:var(--ok);}
+  .jar.b-none{border-color:var(--line);background:#f5f0ea;}
+  .jar-alert{position:absolute;top:2px;right:2px;font-size:11px;line-height:1;color:#fff;background:var(--bad);border-radius:50%;width:14px;height:14px;display:flex;align-items:center;justify-content:center;z-index:2;}
+  .jar-plus{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:20px;color:var(--gray);}
+  .jar-label{font-size:10.5px;color:var(--gray);line-height:1.2;}
+  .jar-value{position:absolute;top:-24px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;font-size:11px;padding:2px 6px;border-radius:6px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .15s;z-index:3;}
+  .jar-value.show{opacity:1;}
+  .setup-mini{display:flex;gap:4px;margin-top:2px;}
+  .setup-mini input{width:34px;padding:3px;font-size:10.5px;border:1px solid var(--line);border-radius:5px;text-align:center;}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;padding-top:12px;margin-top:8px;border-top:1px solid var(--line);}
+  .legend .dot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:5px;vertical-align:middle;}
 </style>
 </head>
 <body>
 
 <header>
   <h1>📦 Estoque — Cali Burritos</h1>
-  <p>Conectado ao Supabase "Estoque Cali Burritos" · edições salvam direto no banco</p>
+  <p>Conectado ao Supabase "Estoque Cali Burritos" · toda edição salva sozinha</p>
 </header>
 
 <div class="tabs">
-  <button class="tab active" data-tab="estoque">Estoque (min/máx)</button>
+  <button class="tab active" data-tab="visao">Visão Geral</button>
+  <button class="tab" data-tab="estoque">Estoque (min/máx)</button>
   <button class="tab" data-tab="contagem">Lançar Contagem</button>
   <button class="tab" data-tab="compras">Lista de Compras</button>
 </div>
@@ -64,15 +89,32 @@
 <main>
   <div id="toast"></div>
 
+  <!-- VISÃO GERAL -->
+  <section id="tab-visao">
+    <p class="hint-top">Cada pote mostra o estoque atual em relação ao máximo. Clique e arraste de baixo pra cima dentro do pote pra lançar a contagem na hora — solta e salva sozinho. Potes cinza ainda não têm mínimo/máximo definido: clique neles pra configurar.</p>
+    <div class="toolbar" id="toolbarViz">
+      <input type="text" id="searchBoxViz" placeholder="Buscar produto...">
+      <select id="catFilterViz"><option value="">Todas as categorias</option></select>
+    </div>
+    <div id="vizContainer"></div>
+    <div class="legend">
+      <span><span class="dot" style="background:var(--bad)"></span>Precisa repor</span>
+      <span><span class="dot" style="background:var(--warn)"></span>Ficando baixo</span>
+      <span><span class="dot" style="background:var(--ok)"></span>Ok</span>
+      <span><span class="dot" style="background:#b9b0a6"></span>Sem mín/máx definido</span>
+    </div>
+  </section>
+
   <!-- ESTOQUE -->
-  <section id="tab-estoque">
+  <section id="tab-estoque" class="hidden">
     <div class="summary">
       <div class="card"><div class="n" id="sumTotal">–</div><div class="l">insumos cadastrados</div></div>
       <div class="card"><div class="n" id="sumSemMin">–</div><div class="l">sem mínimo definido</div></div>
       <div class="card"><div class="n" id="sumBaixo">–</div><div class="l">abaixo do mínimo</div></div>
       <div class="card"><div class="n" id="sumOk">–</div><div class="l">ok</div></div>
     </div>
-    <div class="toolbar">
+    <p class="hint-top">Edite mínimo, máximo ou o valor atual — salva sozinho assim que você sai do campo (Tab ou clique fora).</p>
+    <div class="toolbar" id="toolbarEstoque">
       <input type="text" id="searchBox" placeholder="Buscar produto...">
       <select id="catFilter"><option value="">Todas as categorias</option></select>
       <button class="ghost" id="refreshBtn">🔄 Recarregar</button>
@@ -82,7 +124,7 @@
       <thead>
         <tr>
           <th>Produto</th><th>Unid.</th><th>Preço unit.</th>
-          <th>Mínimo</th><th>Máximo</th><th>Atual</th><th>Status</th><th></th>
+          <th>Mínimo</th><th>Máximo</th><th>Atual</th><th>Status</th>
         </tr>
       </thead>
       <tbody id="estoqueBody"></tbody>
@@ -91,15 +133,15 @@
 
   <!-- CONTAGEM -->
   <section id="tab-contagem" class="hidden">
-    <p class="muted">Digite a quantidade contada agora para cada insumo e clique em "Salvar contagem". Isso atualiza o estoque atual e grava no histórico de contagens (com a data de hoje).</p>
-    <div class="toolbar">
+    <p class="hint-top">Digite a quantidade contada e saia do campo (Tab, Enter ou clique fora) — salva sozinho: atualiza o estoque atual e grava no histórico de contagens com a data de hoje.</p>
+    <div class="toolbar" id="toolbarContagem">
       <input type="text" id="searchBoxCont" placeholder="Buscar produto...">
       <select id="catFilterCont"><option value="">Todas as categorias</option></select>
       <span class="muted" id="dataContagem"></span>
     </div>
     <table>
       <thead>
-        <tr><th>Produto</th><th>Unid.</th><th>Atual (banco)</th><th>Contagem de hoje</th><th></th></tr>
+        <tr><th>Produto</th><th>Unid.</th><th>Atual (banco)</th><th>Contagem de hoje</th></tr>
       </thead>
       <tbody id="contagemBody"></tbody>
     </table>
@@ -146,21 +188,80 @@ function statusOf(item){
   return {label:'ok', cls:'b-ok'};
 }
 
+function roundForUnit(v, unidade){
+  const u = (unidade||'').toLowerCase();
+  if(['unidade','pacote','rolo','fardo','caixa'].includes(u)) return Math.round(v);
+  return Math.round(v*10)/10;
+}
+
+function flashInput(input, ok){
+  input.classList.remove('saving','saved','error');
+  void input.offsetWidth;
+  input.classList.add(ok ? 'saved' : 'error');
+  setTimeout(()=> input.classList.remove('saved','error'), 1200);
+}
+
+function flashDot(dot, ok){
+  dot.classList.remove('show-ok','show-err');
+  void dot.offsetWidth;
+  dot.classList.add(ok ? 'show-ok' : 'show-err');
+  setTimeout(()=> dot.classList.remove('show-ok','show-err'), 1400);
+}
+
+async function saveContagem(item, qtd){
+  const today = new Date().toISOString().slice(0,10);
+  const { error: err1 } = await db.from('contagens').insert({ insumo_id: item.id, data: today, quantidade: qtd });
+  if(err1) return {error: err1};
+  const { error: err2 } = await db.from('insumos').update({ estoque_atual: qtd, updated_at: new Date().toISOString() }).eq('id', item.id);
+  if(err2) return {error: err2};
+  item.estoque_atual = qtd;
+  updateSummary();
+  return {error: null};
+}
+
+// ---------- Sticky offsets ----------
+function updateStickyOffsets(){
+  const header = document.querySelector('header');
+  const tabs = document.querySelector('.tabs');
+  const headerH = header.getBoundingClientRect().height;
+  tabs.style.top = headerH + 'px';
+  const tabsH = tabs.getBoundingClientRect().height;
+  const baseTop = headerH + tabsH;
+
+  document.querySelectorAll('.toolbar').forEach(tb=>{
+    tb.style.top = baseTop + 'px';
+  });
+
+  document.querySelectorAll('section:not(.hidden) table').forEach(table=>{
+    const toolbar = table.closest('section').querySelector('.toolbar');
+    const toolbarH = toolbar ? toolbar.getBoundingClientRect().height : 0;
+    const theadTop = baseTop + toolbarH;
+    table.querySelectorAll('thead th').forEach(th=> th.style.top = theadTop + 'px');
+    const theadH = table.querySelector('thead').getBoundingClientRect().height;
+    table.querySelectorAll('tr.cat-row td').forEach(td=> td.style.top = (theadTop + theadH) + 'px');
+  });
+}
+window.addEventListener('resize', updateStickyOffsets);
+
 async function loadInsumos(){
-  document.getElementById('lastLoad').textContent = 'Carregando...';
+  const lastLoadEl = document.getElementById('lastLoad');
+  if(lastLoadEl) lastLoadEl.textContent = 'Carregando...';
   const { data, error } = await db.from('insumos').select('*').order('categoria', {ascending:true}).order('produto', {ascending:true});
   if(error){ toast('Erro ao carregar: ' + error.message, false); return; }
   insumos = data;
   populateCategoryFilters();
+  renderVisaoGeral();
   renderEstoque();
   renderContagem();
   updateSummary();
-  document.getElementById('lastLoad').textContent = 'Atualizado às ' + new Date().toLocaleTimeString('pt-BR');
+  if(lastLoadEl) lastLoadEl.textContent = 'Atualizado às ' + new Date().toLocaleTimeString('pt-BR');
+  requestAnimationFrame(updateStickyOffsets);
 }
 
 function populateCategoryFilters(){
   const cats = [...new Set(insumos.map(i=>i.categoria || 'Sem categoria'))].sort();
-  for(const sel of [document.getElementById('catFilter'), document.getElementById('catFilterCont')]){
+  for(const id of ['catFilter','catFilterCont','catFilterViz']){
+    const sel = document.getElementById(id);
     const current = sel.value;
     sel.innerHTML = '<option value="">Todas as categorias</option>' + cats.map(c=>`<option value="${c}">${c}</option>`).join('');
     sel.value = current;
@@ -192,6 +293,134 @@ function filteredInsumos(searchId, catId){
   });
 }
 
+// ---------- Visão Geral (jars) ----------
+function makeDraggable(jarEl, fillEl, labelEl, item){
+  let pendingVal = null;
+  function updateFromClientY(clientY){
+    const rect = jarEl.getBoundingClientRect();
+    let frac = 1 - (clientY - rect.top)/rect.height;
+    frac = Math.max(0, Math.min(1, frac));
+    const max = Number(item.estoque_maximo)||0;
+    let val = roundForUnit(frac*max, item.unidade);
+    fillEl.style.height = Math.min(100, max>0 ? (val/max)*100 : 0) + '%';
+    labelEl.textContent = val + ' ' + (item.unidade||'');
+    labelEl.classList.add('show');
+    return val;
+  }
+  jarEl.addEventListener('pointerdown', e=>{
+    jarEl.setPointerCapture(e.pointerId);
+    pendingVal = updateFromClientY(e.clientY);
+  });
+  jarEl.addEventListener('pointermove', e=>{
+    if(pendingVal===null) return;
+    pendingVal = updateFromClientY(e.clientY);
+  });
+  async function finish(){
+    if(pendingVal===null) return;
+    const val = pendingVal;
+    pendingVal = null;
+    labelEl.classList.remove('show');
+    const { error } = await saveContagem(item, val);
+    if(error){
+      jarEl.style.outline = '2px solid var(--bad)';
+      setTimeout(()=> jarEl.style.outline = '', 800);
+      toast('Erro ao salvar: ' + error.message, false);
+      return;
+    }
+    const s = statusOf(item);
+    jarEl.className = 'jar ' + s.cls;
+    const alertEl = jarEl.querySelector('.jar-alert');
+    if(s.label==='repor' && !alertEl){
+      const a = document.createElement('div'); a.className='jar-alert'; a.textContent='!'; jarEl.appendChild(a);
+    } else if(s.label!=='repor' && alertEl){
+      alertEl.remove();
+    }
+    toast('Salvo: ' + item.produto + ' — ' + val + ' ' + (item.unidade||''));
+  }
+  jarEl.addEventListener('pointerup', finish);
+  jarEl.addEventListener('pointercancel', ()=>{ pendingVal=null; labelEl.classList.remove('show'); });
+}
+
+function renderVisaoGeral(){
+  const list = filteredInsumos('searchBoxViz','catFilterViz');
+  const container = document.getElementById('vizContainer');
+  container.innerHTML = '';
+  let lastCat = null, grid = null;
+  list.forEach(item=>{
+    const cat = item.categoria || 'Sem categoria';
+    if(cat !== lastCat){
+      const block = document.createElement('div');
+      block.className = 'viz-cat-block';
+      const h3 = document.createElement('h3');
+      h3.className = 'viz-cat-title';
+      h3.textContent = cat;
+      block.appendChild(h3);
+      grid = document.createElement('div');
+      grid.className = 'jar-grid';
+      block.appendChild(grid);
+      container.appendChild(block);
+      lastCat = cat;
+    }
+    const max = Number(item.estoque_maximo)||0;
+    const atual = Number(item.estoque_atual)||0;
+    const s = statusOf(item);
+    const wrap = document.createElement('div');
+    wrap.className = 'jar-wrap';
+    if(max>0){
+      const pct = Math.min(100, (atual/max)*100);
+      wrap.innerHTML = `
+        <div class="jar ${s.cls}">
+          <div class="jar-value"></div>
+          <div class="jar-inner"><div class="jar-fill" style="height:${pct}%"></div></div>
+          ${s.label==='repor' ? '<div class="jar-alert">!</div>' : ''}
+        </div>
+        <span class="jar-label">${item.produto}</span>
+      `;
+      const jarEl = wrap.querySelector('.jar');
+      const fillEl = wrap.querySelector('.jar-fill');
+      const labelEl = wrap.querySelector('.jar-value');
+      makeDraggable(jarEl, fillEl, labelEl, item);
+    } else {
+      wrap.innerHTML = `
+        <div class="jar b-none" title="Clique para definir mínimo/máximo">
+          <span class="jar-plus">+</span>
+        </div>
+        <span class="jar-label">${item.produto}</span>
+        <div class="setup-mini hidden">
+          <input type="number" class="mini-min" placeholder="mín" value="${item.estoque_minimo ?? 0}">
+          <input type="number" class="mini-max" placeholder="máx" value="${item.estoque_maximo ?? 0}">
+        </div>
+      `;
+      const jarEl = wrap.querySelector('.jar');
+      const mini = wrap.querySelector('.setup-mini');
+      jarEl.addEventListener('click', ()=> mini.classList.toggle('hidden'));
+      const minInp = wrap.querySelector('.mini-min');
+      const maxInp = wrap.querySelector('.mini-max');
+      [minInp,maxInp].forEach(inp=>{
+        inp.dataset.last = inp.value;
+        inp.addEventListener('blur', async ()=>{
+          if(inp.value === inp.dataset.last) return;
+          const field = inp===minInp ? 'estoque_minimo' : 'estoque_maximo';
+          const val = parseFloat(inp.value)||0;
+          const { error } = await db.from('insumos').update({ [field]: val, updated_at: new Date().toISOString() }).eq('id', item.id);
+          if(error){ toast('Erro: ' + error.message, false); return; }
+          item[field] = val;
+          inp.dataset.last = inp.value;
+          toast('Salvo: ' + item.produto);
+          if(Number(item.estoque_minimo)>0 && Number(item.estoque_maximo)>0){ renderVisaoGeral(); renderEstoque(); updateSummary(); }
+        });
+        inp.addEventListener('keydown', e=>{ if(e.key==='Enter') inp.blur(); });
+      });
+    }
+    grid.appendChild(wrap);
+  });
+  if(list.length===0){
+    container.innerHTML = '<p class="muted" style="text-align:center;padding:30px;">Nenhum insumo encontrado</p>';
+  }
+  requestAnimationFrame(updateStickyOffsets);
+}
+
+// ---------- Estoque (table) ----------
 function renderEstoque(){
   const list = filteredInsumos('searchBox','catFilter');
   const body = document.getElementById('estoqueBody');
@@ -202,7 +431,7 @@ function renderEstoque(){
     if(cat !== lastCat){
       const tr = document.createElement('tr');
       tr.className = 'cat-row';
-      tr.innerHTML = `<td colspan="8">${cat}</td>`;
+      tr.innerHTML = `<td colspan="7">${cat}</td>`;
       body.appendChild(tr);
       lastCat = cat;
     }
@@ -212,78 +441,95 @@ function renderEstoque(){
       <td>${item.produto}</td>
       <td>${item.unidade||'—'}</td>
       <td>${fmtMoney(item.valor_unitario)}</td>
-      <td><input class="num" type="number" step="any" data-field="estoque_minimo" value="${item.estoque_minimo ?? 0}"></td>
-      <td><input class="num" type="number" step="any" data-field="estoque_maximo" value="${item.estoque_maximo ?? 0}"></td>
-      <td><input class="num" type="number" step="any" data-field="estoque_atual" value="${item.estoque_atual ?? 0}"></td>
+      <td><input class="num" type="number" step="any" data-field="estoque_minimo" value="${item.estoque_minimo ?? 0}"><span class="save-dot"></span></td>
+      <td><input class="num" type="number" step="any" data-field="estoque_maximo" value="${item.estoque_maximo ?? 0}"><span class="save-dot"></span></td>
+      <td><input class="num" type="number" step="any" data-field="estoque_atual" value="${item.estoque_atual ?? 0}" title="Ajuste manual. Para contagem oficial use a aba 'Lançar Contagem' ou os potes da Visão Geral."><span class="save-dot"></span></td>
       <td><span class="badge ${s.cls}">${s.label}</span></td>
-      <td><button class="rowbtn">Salvar</button><span class="save-hint">✓ salvo</span></td>
     `;
-    const [minInp, maxInp, atualInp] = tr.querySelectorAll('input.num');
-    const saveBtn = tr.querySelector('.rowbtn');
-    const hint = tr.querySelector('.save-hint');
-    saveBtn.addEventListener('click', async ()=>{
-      const updates = {
-        estoque_minimo: parseFloat(minInp.value)||0,
-        estoque_maximo: parseFloat(maxInp.value)||0,
-        estoque_atual: parseFloat(atualInp.value)||0,
-        updated_at: new Date().toISOString()
+    tr.querySelectorAll('input.num').forEach(input=>{
+      input.dataset.last = input.value;
+      const dot = input.nextElementSibling;
+      const saveField = async ()=>{
+        if(input.value === input.dataset.last) return;
+        const field = input.dataset.field;
+        const val = parseFloat(input.value)||0;
+        input.classList.add('saving');
+        const { error } = await db.from('insumos').update({ [field]: val, updated_at: new Date().toISOString() }).eq('id', item.id);
+        input.classList.remove('saving');
+        if(error){
+          flashInput(input, false);
+          flashDot(dot, false);
+          toast('Erro ao salvar ' + item.produto + ': ' + error.message, false);
+          return;
+        }
+        item[field] = val;
+        input.dataset.last = input.value;
+        flashInput(input, true);
+        flashDot(dot, true);
+        const badge = tr.querySelector('.badge');
+        const ns = statusOf(item);
+        badge.className = 'badge ' + ns.cls;
+        badge.textContent = ns.label;
+        updateSummary();
       };
-      const { error } = await db.from('insumos').update(updates).eq('id', item.id);
-      if(error){ toast('Erro ao salvar ' + item.produto + ': ' + error.message, false); return; }
-      Object.assign(item, updates);
-      const badge = tr.querySelector('.badge');
-      const ns = statusOf(item);
-      badge.className = 'badge ' + ns.cls;
-      badge.textContent = ns.label;
-      hint.classList.add('show');
-      setTimeout(()=>hint.classList.remove('show'), 1500);
-      updateSummary();
-      toast('Salvo: ' + item.produto);
+      input.addEventListener('blur', saveField);
+      input.addEventListener('keydown', e=>{ if(e.key==='Enter'){ input.blur(); } });
     });
     body.appendChild(tr);
   });
   if(list.length===0){
-    body.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:30px;color:#999;">Nenhum insumo encontrado</td></tr>';
+    body.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:30px;color:#999;">Nenhum insumo encontrado</td></tr>';
   }
+  requestAnimationFrame(updateStickyOffsets);
 }
 
+// ---------- Lançar Contagem (table) ----------
 function renderContagem(){
   const list = filteredInsumos('searchBoxCont','catFilterCont');
   const body = document.getElementById('contagemBody');
   body.innerHTML = '';
+  let lastCat = null;
   list.forEach(item=>{
+    const cat = item.categoria || 'Sem categoria';
+    if(cat !== lastCat){
+      const trc = document.createElement('tr');
+      trc.className = 'cat-row';
+      trc.innerHTML = `<td colspan="4">${cat}</td>`;
+      body.appendChild(trc);
+      lastCat = cat;
+    }
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>${item.produto}</td>
       <td>${item.unidade||'—'}</td>
-      <td>${item.estoque_atual ?? 0}</td>
-      <td><input class="num" type="number" step="any" placeholder="qtd contada"></td>
-      <td><button class="rowbtn">Salvar contagem</button><span class="save-hint">✓ salvo</span></td>
+      <td class="atual-cell">${item.estoque_atual ?? 0}</td>
+      <td><input class="num" type="number" step="any" placeholder="qtd contada"><span class="save-dot"></span></td>
     `;
     const input = tr.querySelector('input.num');
-    const btn = tr.querySelector('.rowbtn');
-    const hint = tr.querySelector('.save-hint');
-    btn.addEventListener('click', async ()=>{
-      if(input.value === ''){ toast('Digite uma quantidade', false); return; }
+    const dot = tr.querySelector('.save-dot');
+    input.dataset.last = '';
+    const save = async ()=>{
+      if(input.value === '' || input.value === input.dataset.last) return;
       const qtd = parseFloat(input.value);
-      const today = new Date().toISOString().slice(0,10);
-      const { error: err1 } = await db.from('contagens').insert({ insumo_id: item.id, data: today, quantidade: qtd });
-      if(err1){ toast('Erro ao gravar contagem: ' + err1.message, false); return; }
-      const { error: err2 } = await db.from('insumos').update({ estoque_atual: qtd, updated_at: new Date().toISOString() }).eq('id', item.id);
-      if(err2){ toast('Erro ao atualizar estoque: ' + err2.message, false); return; }
-      item.estoque_atual = qtd;
-      tr.children[2].textContent = qtd;
-      hint.classList.add('show');
-      setTimeout(()=>hint.classList.remove('show'), 1500);
-      toast('Contagem salva: ' + item.produto);
-      updateSummary();
-    });
+      if(isNaN(qtd)) return;
+      input.classList.add('saving');
+      const { error } = await saveContagem(item, qtd);
+      input.classList.remove('saving');
+      if(error){ flashInput(input,false); flashDot(dot,false); toast('Erro ao salvar contagem: ' + error.message, false); return; }
+      tr.querySelector('.atual-cell').textContent = qtd;
+      input.dataset.last = input.value;
+      flashInput(input, true);
+      flashDot(dot, true);
+    };
+    input.addEventListener('blur', save);
+    input.addEventListener('keydown', e=>{ if(e.key==='Enter'){ input.blur(); } });
     body.appendChild(tr);
   });
   if(list.length===0){
-    body.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:30px;color:#999;">Nenhum insumo encontrado</td></tr>';
+    body.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:30px;color:#999;">Nenhum insumo encontrado</td></tr>';
   }
   document.getElementById('dataContagem').textContent = 'Data da contagem: ' + new Date().toLocaleDateString('pt-BR');
+  requestAnimationFrame(updateStickyOffsets);
 }
 
 function gerarListaCompras(){
@@ -295,7 +541,7 @@ function gerarListaCompras(){
 
   const container = document.getElementById('listaCompras');
   if(need.length===0){
-    container.innerHTML = '<p class="muted">Nenhum insumo abaixo do mínimo agora — ou os mínimos ainda não foram definidos na aba Estoque.</p>';
+    container.innerHTML = '<p class="muted">Nenhum insumo abaixo do mínimo agora — ou os mínimos ainda não foram definidos.</p>';
     document.getElementById('copyArea').value = '';
     return;
   }
@@ -316,6 +562,8 @@ function gerarListaCompras(){
   document.getElementById('copyArea').value = texto;
 }
 
+document.getElementById('searchBoxViz').addEventListener('input', renderVisaoGeral);
+document.getElementById('catFilterViz').addEventListener('change', renderVisaoGeral);
 document.getElementById('searchBox').addEventListener('input', renderEstoque);
 document.getElementById('catFilter').addEventListener('change', renderEstoque);
 document.getElementById('searchBoxCont').addEventListener('input', renderContagem);
@@ -338,9 +586,11 @@ document.querySelectorAll('.tab').forEach(tab=>{
     tab.classList.add('active');
     document.querySelectorAll('main > section').forEach(s=>s.classList.add('hidden'));
     document.getElementById('tab-' + tab.dataset.tab).classList.remove('hidden');
+    requestAnimationFrame(updateStickyOffsets);
   });
 });
 
+window.addEventListener('load', updateStickyOffsets);
 loadInsumos();
 </script>
 </body>
