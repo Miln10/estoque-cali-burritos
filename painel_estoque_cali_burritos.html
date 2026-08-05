@@ -96,6 +96,17 @@
   body.role-funcionario .tab[data-tab="visao"],
   body.role-funcionario .tab[data-tab="estoque"],
   body.role-funcionario .tab[data-tab="historico"]{ display:none; }
+
+  .descarte-form{background:#fff;border:1px solid var(--line);border-radius:10px;padding:16px;max-width:420px;display:flex;flex-direction:column;gap:10px;}
+  .descarte-row{display:flex;gap:10px;align-items:center;}
+  .descarte-form select, .descarte-form input[type=text], .descarte-form input[type=number]{padding:9px 10px;border:1px solid var(--line);border-radius:8px;font-size:14px;width:100%;}
+  .descarte-form label{font-size:13px;display:flex;align-items:center;gap:5px;cursor:pointer;}
+  .descarte-thumb{width:44px;height:44px;object-fit:cover;border-radius:6px;margin-right:10px;flex-shrink:0;}
+  #descarteFotoPreview img{max-width:170px;border-radius:8px;border:1px solid var(--line);margin-top:4px;display:block;}
+
+  .pw-wrap{position:relative;width:100%;margin-bottom:10px;}
+  .pw-wrap input{width:100%;padding-right:38px;margin-bottom:0;}
+  .pw-toggle{position:absolute;right:4px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;padding:6px;line-height:1;color:var(--gray);}
 </style>
 </head>
 <body>
@@ -106,7 +117,10 @@
     <h1>📦 Estoque — Cali Burritos</h1>
     <p class="muted">Entre com seu email e senha</p>
     <input type="email" id="loginEmail" placeholder="seu email" autocomplete="username">
-    <input type="password" id="loginPassword" placeholder="senha" autocomplete="current-password">
+    <div class="pw-wrap">
+      <input type="password" id="loginPassword" placeholder="senha" autocomplete="current-password">
+      <button type="button" class="pw-toggle" data-target="loginPassword">👁</button>
+    </div>
     <button class="primary" id="loginBtn" type="button">Entrar</button>
     <p class="auth-error" id="loginError"></p>
     <button class="link-btn" id="forgotBtn" type="button">Esqueci minha senha</button>
@@ -118,8 +132,14 @@
   <div class="auth-card">
     <h1>📦 Estoque — Cali Burritos</h1>
     <p class="muted">Defina sua senha de acesso</p>
-    <input type="password" id="newPassword" placeholder="nova senha (mín. 6 caracteres)" autocomplete="new-password">
-    <input type="password" id="newPassword2" placeholder="confirme a senha" autocomplete="new-password">
+    <div class="pw-wrap">
+      <input type="password" id="newPassword" placeholder="nova senha (mín. 6 caracteres)" autocomplete="new-password">
+      <button type="button" class="pw-toggle" data-target="newPassword">👁</button>
+    </div>
+    <div class="pw-wrap">
+      <input type="password" id="newPassword2" placeholder="confirme a senha" autocomplete="new-password">
+      <button type="button" class="pw-toggle" data-target="newPassword2">👁</button>
+    </div>
     <button class="primary" id="setPasswordBtn" type="button">Salvar senha e entrar</button>
     <p class="auth-error" id="setPasswordError"></p>
   </div>
@@ -144,6 +164,7 @@
   <button class="tab active" data-tab="visao">Visão Geral</button>
   <button class="tab" data-tab="estoque">Estoque (min/máx)</button>
   <button class="tab" data-tab="contagem">Lançar Contagem</button>
+  <button class="tab" data-tab="descarte">Descarte</button>
   <button class="tab" data-tab="compras">Lista de Compras</button>
   <button class="tab" data-tab="historico">Histórico</button>
 </div>
@@ -174,6 +195,7 @@
       <div class="card"><div class="n" id="sumSemMin">–</div><div class="l">sem mínimo definido</div></div>
       <div class="card"><div class="n" id="sumBaixo">–</div><div class="l">abaixo do mínimo</div></div>
       <div class="card"><div class="n" id="sumOk">–</div><div class="l">ok</div></div>
+      <div class="card"><div class="n" id="sumValor">–</div><div class="l">valor total em estoque</div></div>
     </div>
     <p class="hint-top">Edite mínimo, máximo ou o valor atual — salva sozinho assim que você sai do campo (Tab ou clique fora).</p>
     <div class="toolbar" id="toolbarEstoque">
@@ -213,6 +235,38 @@
     </div>
     <div id="listaCompras"></div>
     <textarea id="copyArea" class="hidden"></textarea>
+  </section>
+
+  <!-- DESCARTE -->
+  <section id="tab-descarte" class="hidden">
+    <p class="hint-top">Registre perdas: item vencido, quebrado, rasgado ou estragado. Quando for um insumo, isso desconta automaticamente do estoque atual.</p>
+    <div class="descarte-form">
+      <div class="descarte-row">
+        <label><input type="radio" name="descarteTipo" value="insumo" checked> Insumo</label>
+        <label><input type="radio" name="descarteTipo" value="prep"> Prep / preparo</label>
+      </div>
+      <select id="descarteInsumoSelect"><option value="">Selecione o insumo...</option></select>
+      <input type="text" id="descartePrepNome" class="hidden" placeholder="Nome do prep (ex: molho de tomate)">
+      <div class="descarte-row">
+        <input type="number" id="descarteQtd" step="any" placeholder="Quantidade">
+        <input type="text" id="descarteUnidade" placeholder="Unidade" style="max-width:100px;">
+      </div>
+      <select id="descarteMotivo">
+        <option value="vencido">Venceu / estragou</option>
+        <option value="quebrado">Quebrou / furou / estourou</option>
+        <option value="rasgado">Rasgou / danificou</option>
+        <option value="outro">Outro</option>
+      </select>
+      <input type="text" id="descarteObs" placeholder="Observação (opcional)">
+      <input type="file" id="descarteFotoInput" accept="image/*" capture="environment" class="hidden">
+      <button class="ghost" id="descarteFotoBtn" type="button">📷 Tirar foto (opcional)</button>
+      <span class="muted" id="descarteFotoStatus"></span>
+      <div id="descarteFotoPreview"></div>
+      <button class="primary" id="descarteBtn" type="button">🗑️ Registrar descarte</button>
+      <p class="auth-error" id="descarteError" style="text-align:left;"></p>
+    </div>
+    <h3 class="viz-cat-title" style="margin-top:22px;">Descartes recentes</h3>
+    <div id="descartesRecentes"></div>
   </section>
 
   <!-- HISTÓRICO -->
@@ -326,6 +380,7 @@ async function loadInsumos(){
   if(error){ toast('Erro ao carregar: ' + error.message, false); return; }
   insumos = data;
   populateCategoryFilters();
+  populateDescarteInsumoSelect();
   renderVisaoGeral();
   renderEstoque();
   renderContagem();
@@ -347,17 +402,20 @@ function populateCategoryFilters(){
 
 function updateSummary(){
   const total = insumos.length;
-  let semMin=0, baixo=0, ok=0;
+  let semMin=0, baixo=0, ok=0, valorTotal=0;
   insumos.forEach(i=>{
     const s = statusOf(i);
     if(s.label==='sem mínimo') semMin++;
     else if(s.label==='repor' || s.label==='baixo') baixo++;
     else ok++;
+    valorTotal += (Number(i.estoque_atual)||0) * (Number(i.valor_unitario)||0);
   });
   document.getElementById('sumTotal').textContent = total;
   document.getElementById('sumSemMin').textContent = semMin;
   document.getElementById('sumBaixo').textContent = baixo;
   document.getElementById('sumOk').textContent = ok;
+  const sumValorEl = document.getElementById('sumValor');
+  if(sumValorEl) sumValorEl.textContent = fmtMoney(valorTotal);
 }
 
 function filteredInsumos(searchId, catId){
@@ -586,7 +644,7 @@ function renderContagem(){
 }
 
 // ---------- Histórico (audit log) ----------
-function tabelaLabel(t){ return t==='insumos' ? 'Estoque' : (t==='contagens' ? 'Contagem' : t); }
+function tabelaLabel(t){ return t==='insumos' ? 'Estoque' : (t==='contagens' ? 'Contagem' : (t==='descartes' ? 'Descarte' : t)); }
 function acaoLabel(a){ return {insert:'criado', update:'alterado', delete:'excluído'}[a] || a; }
 
 function produtoDoRegistro(entry){
@@ -599,14 +657,20 @@ function produtoDoRegistro(entry){
     const item = insumos.find(i=>i.id===insumoId);
     return item ? item.produto : '—';
   }
+  if(entry.tabela === 'descartes'){
+    return entry.dados_novos?.item_nome || entry.dados_antigos?.item_nome || '—';
+  }
   return '—';
 }
+
+const DESCARTE_MOTIVO_LABEL = {vencido:'venceu/estragou', quebrado:'quebrou/furou/estourou', rasgado:'rasgou/danificou', outro:'outro'};
 
 const HIST_DIFF_FIELDS = ['estoque_minimo','estoque_maximo','estoque_atual','quantidade'];
 function diffResumo(entry){
   if(entry.acao === 'insert'){
     const n = entry.dados_novos || {};
     if(entry.tabela==='contagens') return 'contagem registrada: ' + (n.quantidade ?? '—');
+    if(entry.tabela==='descartes') return 'descarte (' + (DESCARTE_MOTIVO_LABEL[n.motivo]||n.motivo||'') + '): ' + (n.quantidade ?? '—') + ' ' + (n.unidade||'');
     return 'registro criado';
   }
   if(entry.acao === 'delete') return 'registro excluído';
@@ -641,6 +705,168 @@ async function loadHistorico(){
   }).join('');
   requestAnimationFrame(updateStickyOffsets);
 }
+
+// ---------- Descarte ----------
+function populateDescarteInsumoSelect(){
+  const sel = document.getElementById('descarteInsumoSelect');
+  if(!sel) return;
+  const current = sel.value;
+  sel.innerHTML = '<option value="">Selecione o insumo...</option>' +
+    insumos.slice().sort((a,b)=> (a.produto||'').localeCompare(b.produto||''))
+      .map(i=>`<option value="${i.id}" data-unidade="${i.unidade||''}">${i.produto}</option>`).join('');
+  sel.value = current;
+}
+
+async function loadDescartesRecentes(){
+  const box = document.getElementById('descartesRecentes');
+  if(!box) return;
+  box.innerHTML = '<p class="muted">Carregando...</p>';
+  const { data, error } = await db.from('descartes').select('*').order('created_at', {ascending:false}).limit(15);
+  if(error){ box.innerHTML = '<p class="muted">Erro ao carregar: ' + error.message + '</p>'; return; }
+  if(!data || data.length===0){ box.innerHTML = '<p class="muted">Nenhum descarte registrado ainda.</p>'; return; }
+  box.innerHTML = data.map(d=>{
+    const dt = new Date(d.foto_tirada_em || d.created_at).toLocaleString('pt-BR');
+    const thumb = d.foto_url ? `<a href="${d.foto_url}" target="_blank" rel="noopener"><img class="descarte-thumb" src="${d.foto_url}"></a>` : '';
+    return `<div class="list-item">${thumb}<div style="flex:1"><strong>${d.item_nome}</strong> <span class="muted">(${DESCARTE_MOTIVO_LABEL[d.motivo]||d.motivo})</span></div><div>${d.quantidade} ${d.unidade||''} <span class="muted">— ${dt}</span></div></div>`;
+  }).join('');
+}
+
+let pendingFotoUrl = null;
+let pendingFotoTiradaEm = null;
+let pendingFotoPreviewObjUrl = null;
+
+function stampPhoto(file, dateObj){
+  return new Promise((resolve, reject)=>{
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = ()=>{
+      URL.revokeObjectURL(url);
+      const canvas = document.createElement('canvas');
+      const maxW = 1280;
+      const scale = img.width > maxW ? maxW / img.width : 1;
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+      const label = dateObj.toLocaleDateString('pt-BR') + '  ' + dateObj.toLocaleTimeString('pt-BR');
+      const fontSize = Math.max(16, Math.round(canvas.width * 0.032));
+      ctx.font = 'bold ' + fontSize + 'px sans-serif';
+      const textW = ctx.measureText(label).width;
+      const padding = fontSize * 0.6;
+      const boxW = textW + padding * 2;
+      const boxH = fontSize + padding * 1.2;
+      const x = canvas.width - boxW - 10;
+      const y = canvas.height - boxH - 10;
+      ctx.fillStyle = 'rgba(0,0,0,0.55)';
+      ctx.fillRect(x, y, boxW, boxH);
+      ctx.fillStyle = '#fff';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(label, x + padding, y + boxH / 2);
+
+      canvas.toBlob(blob=>{
+        if(blob) resolve(blob); else reject(new Error('Falha ao gerar imagem'));
+      }, 'image/jpeg', 0.82);
+    };
+    img.onerror = ()=>{ URL.revokeObjectURL(url); reject(new Error('Não foi possível carregar a imagem')); };
+    img.src = url;
+  });
+}
+
+document.getElementById('descarteFotoBtn').addEventListener('click', ()=>{
+  document.getElementById('descarteFotoInput').click();
+});
+
+document.getElementById('descarteFotoInput').addEventListener('change', async (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const capturedAt = new Date();
+  const statusEl = document.getElementById('descarteFotoStatus');
+  statusEl.textContent = 'Processando foto...';
+  try {
+    const stampedBlob = await stampPhoto(file, capturedAt);
+    const path = 'descarte_' + Date.now() + '_' + Math.random().toString(36).slice(2,8) + '.jpg';
+    const { error: upErr } = await db.storage.from('descartes-fotos').upload(path, stampedBlob, { contentType: 'image/jpeg', upsert: false });
+    if(upErr){ statusEl.textContent = 'Erro ao enviar foto: ' + upErr.message; toast('Erro ao enviar foto', false); return; }
+    const { data: pub } = db.storage.from('descartes-fotos').getPublicUrl(path);
+    pendingFotoUrl = pub.publicUrl;
+    pendingFotoTiradaEm = capturedAt.toISOString();
+    if(pendingFotoPreviewObjUrl) URL.revokeObjectURL(pendingFotoPreviewObjUrl);
+    pendingFotoPreviewObjUrl = URL.createObjectURL(stampedBlob);
+    document.getElementById('descarteFotoPreview').innerHTML = `<img src="${pendingFotoPreviewObjUrl}">`;
+    statusEl.textContent = 'Foto anexada às ' + capturedAt.toLocaleTimeString('pt-BR');
+  } catch(err){
+    statusEl.textContent = 'Erro ao processar foto: ' + err.message;
+  }
+});
+
+document.querySelectorAll('input[name="descarteTipo"]').forEach(r=>{
+  r.addEventListener('change', ()=>{
+    const isInsumo = document.querySelector('input[name="descarteTipo"]:checked').value === 'insumo';
+    document.getElementById('descarteInsumoSelect').classList.toggle('hidden', !isInsumo);
+    document.getElementById('descartePrepNome').classList.toggle('hidden', isInsumo);
+  });
+});
+
+document.getElementById('descarteInsumoSelect').addEventListener('change', (e)=>{
+  const opt = e.target.selectedOptions[0];
+  if(opt && opt.dataset.unidade) document.getElementById('descarteUnidade').value = opt.dataset.unidade;
+});
+
+document.getElementById('descarteBtn').addEventListener('click', async ()=>{
+  const errEl = document.getElementById('descarteError');
+  errEl.textContent = '';
+  const tipo = document.querySelector('input[name="descarteTipo"]:checked').value;
+  const qtd = parseFloat(document.getElementById('descarteQtd').value);
+  const unidadeInp = document.getElementById('descarteUnidade').value.trim();
+  const motivo = document.getElementById('descarteMotivo').value;
+  const obs = document.getElementById('descarteObs').value.trim();
+
+  if(!qtd || qtd <= 0){ errEl.textContent = 'Informe uma quantidade válida.'; return; }
+
+  const payload = { item_tipo: tipo, quantidade: qtd, unidade: unidadeInp || null, motivo, observacao: obs || null };
+
+  if(tipo === 'insumo'){
+    const sel = document.getElementById('descarteInsumoSelect');
+    const insumoId = sel.value;
+    if(!insumoId){ errEl.textContent = 'Selecione o insumo.'; return; }
+    const item = insumos.find(i=>i.id===insumoId);
+    payload.insumo_id = insumoId;
+    payload.item_nome = item ? item.produto : '—';
+    if(!payload.unidade) payload.unidade = item?.unidade || null;
+  } else {
+    const nome = document.getElementById('descartePrepNome').value.trim();
+    if(!nome){ errEl.textContent = 'Informe o nome do prep.'; return; }
+    payload.item_nome = nome;
+  }
+
+  if(pendingFotoUrl){
+    payload.foto_url = pendingFotoUrl;
+    payload.foto_tirada_em = pendingFotoTiradaEm;
+  }
+
+  const btn = document.getElementById('descarteBtn');
+  btn.disabled = true;
+  const { error } = await db.from('descartes').insert(payload);
+  btn.disabled = false;
+  if(error){ errEl.textContent = 'Erro ao salvar: ' + error.message; toast('Erro ao registrar descarte', false); return; }
+
+  if(tipo === 'insumo'){
+    const item = insumos.find(i=>i.id===payload.insumo_id);
+    if(item){ item.estoque_atual = Math.max(0, (Number(item.estoque_atual)||0) - qtd); }
+    renderVisaoGeral(); renderEstoque(); renderContagem(); updateSummary(); renderAvisos();
+  }
+
+  document.getElementById('descarteQtd').value = '';
+  document.getElementById('descarteObs').value = '';
+  document.getElementById('descarteFotoInput').value = '';
+  document.getElementById('descarteFotoPreview').innerHTML = '';
+  document.getElementById('descarteFotoStatus').textContent = '';
+  pendingFotoUrl = null;
+  pendingFotoTiradaEm = null;
+  toast('Descarte registrado: ' + payload.item_nome);
+  loadDescartesRecentes();
+});
 
 function renderAvisos(){
   const box = document.getElementById('avisosBox');
@@ -712,6 +938,7 @@ document.querySelectorAll('.tab').forEach(tab=>{
     document.querySelectorAll('main > section').forEach(s=>s.classList.add('hidden'));
     document.getElementById('tab-' + tab.dataset.tab).classList.remove('hidden');
     if(tab.dataset.tab === 'historico'){ loadHistorico(); }
+    if(tab.dataset.tab === 'descarte'){ loadDescartesRecentes(); }
     requestAnimationFrame(updateStickyOffsets);
   });
 });
@@ -762,6 +989,16 @@ document.getElementById('loginBtn').addEventListener('click', async ()=>{
   const { error } = await db.auth.signInWithPassword({ email, password });
   if(error){ errEl.textContent = 'Email ou senha incorretos.'; return; }
 });
+document.querySelectorAll('.pw-toggle').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const target = document.getElementById(btn.dataset.target);
+    if(!target) return;
+    const show = target.type === 'password';
+    target.type = show ? 'text' : 'password';
+    btn.textContent = show ? '🙈' : '👁';
+  });
+});
+
 document.getElementById('loginEmail').addEventListener('keydown', e=>{ if(e.key==='Enter') document.getElementById('loginPassword').focus(); });
 document.getElementById('loginPassword').addEventListener('keydown', e=>{ if(e.key==='Enter') document.getElementById('loginBtn').click(); });
 
@@ -801,9 +1038,21 @@ db.auth.onAuthStateChange((event)=>{
 
 (async function initAuth(){
   const hash = new URLSearchParams(window.location.hash.slice(1));
-  const authType = hash.get('type');
+  const hashType = hash.get('type');
+  const qs = new URLSearchParams(window.location.search);
+  const code = qs.get('code');
+  const qsType = qs.get('type');
+  let isInviteOrRecovery = (hashType === 'invite' || hashType === 'recovery' || qsType === 'invite' || qsType === 'recovery');
+
+  // fluxo PKCE: o link do convite/recuperação chega com ?code=... em vez de #access_token=...
+  if(code){
+    const { error } = await db.auth.exchangeCodeForSession(code);
+    if(!error) isInviteOrRecovery = true;
+    window.history.replaceState(null, '', window.location.pathname);
+  }
+
   const { data: { session } } = await db.auth.getSession();
-  if(session && (authType === 'invite' || authType === 'recovery')){
+  if(session && isInviteOrRecovery){
     showScreen('setPassword');
     return;
   }
