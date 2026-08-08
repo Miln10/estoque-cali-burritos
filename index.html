@@ -853,7 +853,15 @@ document.getElementById('descarteBtn').addEventListener('click', async ()=>{
 
   if(tipo === 'insumo'){
     const item = insumos.find(i=>i.id===payload.insumo_id);
-    if(item){ item.estoque_atual = Math.max(0, (Number(item.estoque_atual)||0) - qtd); }
+    if(item){
+      const novoEstoque = Math.max(0, (Number(item.estoque_atual)||0) - qtd);
+      const { error: errEstoque } = await db.from('insumos').update({ estoque_atual: novoEstoque, updated_at: new Date().toISOString() }).eq('id', item.id);
+      if(errEstoque){
+        toast('Descarte salvo, mas falha ao atualizar estoque: ' + errEstoque.message, false);
+      } else {
+        item.estoque_atual = novoEstoque;
+      }
+    }
     renderVisaoGeral(); renderEstoque(); renderContagem(); updateSummary(); renderAvisos();
   }
 
