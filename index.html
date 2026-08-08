@@ -96,6 +96,25 @@
   body.role-funcionario .tab[data-tab="visao"],
   body.role-funcionario .tab[data-tab="estoque"],
   body.role-funcionario .tab[data-tab="historico"]{ display:none; }
+  body.role-funcionario .admin-only{ display:none; }
+
+  .pcp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;}
+  .pcp-card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;border-left:4px solid var(--line);}
+  .pcp-card.b-bad{border-left-color:var(--bad);} .pcp-card.b-warn{border-left-color:var(--warn);}
+  .pcp-card.b-ok{border-left-color:var(--ok);} .pcp-card.b-none{border-left-color:#b9b0a6;}
+  .pcp-card-head{display:flex;justify-content:space-between;align-items:center;gap:8px;}
+  .pcp-card-head strong{font-size:13.5px;}
+  .pcp-card-row{display:flex;justify-content:space-between;font-size:12.5px;}
+  .pcp-atual{font-weight:700;}
+  .pcp-count-steppers{justify-content:center;align-items:center;}
+  .pcp-sugestao{background:#fff7e6;border-radius:6px;padding:6px 8px;font-size:12.5px;text-align:center;}
+  .pcp-sugestao strong{color:var(--orange-dark);}
+  .pcp-ajuste-toggle summary{font-size:11.5px;color:var(--gray);cursor:pointer;}
+  .pcp-ajuste-toggle input{width:100%;margin-top:4px;}
+  .pcp-produzir-row{display:flex;gap:6px;align-items:center;}
+  .pcp-produzir-row input{width:70px;}
+  .pcp-produzir-row button{flex:1;font-size:12px;padding:8px 6px;}
+  .receita-lista{display:flex;flex-direction:column;gap:6px;}
 
   .descarte-form{background:#fff;border:1px solid var(--line);border-radius:10px;padding:16px;max-width:420px;display:flex;flex-direction:column;gap:10px;}
   .descarte-row{display:flex;gap:10px;align-items:center;}
@@ -166,6 +185,7 @@
   <button class="tab" data-tab="contagem">Lançar Contagem</button>
   <button class="tab" data-tab="descarte">Descarte</button>
   <button class="tab" data-tab="compras">Lista de Compras</button>
+  <button class="tab" data-tab="pcp">PCP</button>
   <button class="tab" data-tab="historico">Histórico</button>
 </div>
 
@@ -274,6 +294,43 @@
     <div id="descartesRecentes"></div>
   </section>
 
+  <!-- PCP -->
+  <section id="tab-pcp" class="hidden">
+    <p class="hint-top">Quanto produzir hoje é calculado sozinho (máximo − estoque atual, + ajuste opcional). Conte o estoque de cada prep com os botões − e + — igual à contagem de insumos.</p>
+
+    <div class="admin-only">
+      <h3 class="viz-cat-title">Cadastrar novo prep</h3>
+      <div class="descarte-form" style="max-width:520px;">
+        <input type="text" id="novoPrepNome" placeholder="Nome do prep (ex: molho de tomate)">
+        <div class="descarte-row">
+          <input type="number" id="novoPrepRendQtd" step="any" placeholder="Rendimento da receita (ex: 5)">
+          <select id="novoPrepRendUnidade"></select>
+        </div>
+        <div class="descarte-row">
+          <input type="number" id="novoPrepMin" step="any" placeholder="Estoque mínimo">
+          <input type="number" id="novoPrepMax" step="any" placeholder="Estoque máximo">
+        </div>
+        <button class="primary" id="novoPrepBtn" type="button">➕ Cadastrar prep</button>
+        <p class="auth-error" id="novoPrepError"></p>
+      </div>
+
+      <h3 class="viz-cat-title" style="margin-top:22px;">Preps cadastrados — mínimo/máximo e receita</h3>
+      <table>
+        <thead><tr><th>Prep</th><th>Rendimento</th><th>Mínimo</th><th>Máximo</th><th>Atual</th><th>Receita</th></tr></thead>
+        <tbody id="prepsAdminBody"></tbody>
+      </table>
+    </div>
+
+    <h3 class="viz-cat-title" style="margin-top:22px;">Painel do dia</h3>
+    <div class="toolbar" id="toolbarPcp">
+      <input type="text" id="searchBoxPcp" placeholder="Buscar prep...">
+    </div>
+    <div id="pcpContainer" class="pcp-grid"></div>
+
+    <h3 class="viz-cat-title" style="margin-top:22px;">Produções recentes</h3>
+    <div id="producoesRecentes"></div>
+  </section>
+
   <!-- HISTÓRICO -->
   <section id="tab-historico" class="hidden">
     <p class="hint-top">Registro de todas as alterações no estoque e nas contagens, com usuário e data/hora — para conferência.</p>
@@ -299,6 +356,10 @@ const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 let insumos = [];
 let currentUser = null;
 let currentRole = null;
+let preps = [];
+let pcpAjustesHoje = {};
+let pcpLoaded = false;
+const RENDIMENTO_UNIDADES = ['un','kg','g','l','ml','pacote','rolo','maço','par'];
 
 function toast(msg, ok=true){
   const t = document.getElementById('toast');
@@ -930,6 +991,302 @@ document.getElementById('descarteBtn').addEventListener('click', async ()=>{
   loadDescartesRecentes();
 });
 
+// ---------- PCP (Planejamento e Controle de Produção) ----------
+async function loadPreps(){
+  const { data, error } = await db.from('preps').select('*').order('nome');
+  if(error){ toast('Erro ao carregar preps: ' + error.message, false); return; }
+  preps = data || [];
+  await loadPcpAjustesHoje();
+  renderPcpBoard();
+  if(currentRole==='admin') renderPrepsAdmin();
+  loadProducoesRecentes();
+}
+
+async function loadPcpAjustesHoje(){
+  const hoje = todayStr();
+  const { data, error } = await db.from('pcp_demanda_diaria').select('prep_id, quantidade_prevista').eq('data', hoje);
+  if(error){ console.error(error); return; }
+  pcpAjustesHoje = {};
+  (data||[]).forEach(r=> pcpAjustesHoje[r.prep_id] = r.quantidade_prevista);
+}
+
+function sugestaoProducao(item){
+  const max = Number(item.estoque_maximo)||0;
+  const atual = Number(item.estoque_atual)||0;
+  const ajuste = Number(pcpAjustesHoje[item.id])||0;
+  return Math.max(0, roundForUnit((max - atual) + ajuste, item.rendimento_unidade));
+}
+
+function renderPcpBoard(){
+  const container = document.getElementById('pcpContainer');
+  if(!container) return;
+  const term = (document.getElementById('searchBoxPcp').value || '').toLowerCase();
+  const list = preps.filter(p=> !term || (p.nome||'').toLowerCase().includes(term));
+  container.innerHTML = '';
+  if(list.length===0){
+    container.innerHTML = '<p class="muted" style="text-align:center;padding:30px;">Nenhum prep cadastrado ainda' + (currentRole==='admin' ? ' — cadastre um acima.' : '.') + '</p>';
+    return;
+  }
+  list.forEach(item=>{
+    const s = statusOf(item);
+    const atual = Number(item.estoque_atual)||0;
+    const min = Number(item.estoque_minimo)||0;
+    const max = Number(item.estoque_maximo)||0;
+    const ajuste = pcpAjustesHoje[item.id];
+    const sugestao = sugestaoProducao(item);
+    const card = document.createElement('div');
+    card.className = 'pcp-card ' + s.cls;
+    card.innerHTML = `
+      <div class="pcp-card-head"><strong>${item.nome}</strong><span class="badge ${s.cls}">${s.label}</span></div>
+      <div class="pcp-card-row"><span class="muted">Estoque atual</span><span class="pcp-atual">${roundForUnit(atual, item.rendimento_unidade)} ${item.rendimento_unidade||''}</span></div>
+      <div class="jar-steppers pcp-count-steppers">
+        <button class="step-btn minus" type="button">−</button>
+        <span class="muted">contagem</span>
+        <button class="step-btn plus" type="button">+</button>
+      </div>
+      <div class="pcp-card-row"><span class="muted">Mín / Máx</span><span>${roundForUnit(min, item.rendimento_unidade)} / ${roundForUnit(max, item.rendimento_unidade)}</span></div>
+      <div class="pcp-sugestao">Produzir hoje: <strong>${sugestao} ${item.rendimento_unidade||''}</strong></div>
+      <details class="pcp-ajuste-toggle">
+        <summary>Ajuste extra pra hoje (opcional)</summary>
+        <input type="number" class="num pcp-ajuste-input" step="any" value="${ajuste ?? ''}" placeholder="0">
+      </details>
+      <div class="pcp-produzir-row">
+        <input type="number" class="num pcp-produzir-qtd" step="any" value="${sugestao || ''}" placeholder="qtd">
+        <button class="primary pcp-produzir-btn" type="button">✅ Produzir</button>
+      </div>
+    `;
+    const minusBtn = card.querySelector('.step-btn.minus');
+    const plusBtn = card.querySelector('.step-btn.plus');
+    const atualEl = card.querySelector('.pcp-atual');
+    const step = stepForUnit(item.rendimento_unidade);
+    let pendingVal;
+    let pendingTimer;
+    function currentVal(){ return pendingVal !== undefined ? pendingVal : (Number(item.estoque_atual)||0); }
+    function commit(val){
+      if(pendingTimer) clearTimeout(pendingTimer);
+      pendingTimer = setTimeout(async ()=>{
+        card.classList.add('saving-jar');
+        const { error } = await saveContagemPrep(item, val);
+        card.classList.remove('saving-jar');
+        pendingVal = undefined;
+        if(error){ toast('Erro ao salvar ' + item.nome + ': ' + error.message, false); return; }
+        toast('Contagem salva: ' + item.nome + ' — ' + val + ' ' + (item.rendimento_unidade||''));
+        renderPcpBoard();
+        if(currentRole==='admin') renderPrepsAdmin();
+      }, 700);
+    }
+    minusBtn.addEventListener('click', ()=>{
+      const val = Math.max(0, roundForUnit(currentVal()-step, item.rendimento_unidade));
+      pendingVal = val;
+      atualEl.textContent = roundForUnit(val, item.rendimento_unidade) + ' ' + (item.rendimento_unidade||'');
+      commit(val);
+    });
+    plusBtn.addEventListener('click', ()=>{
+      const val = Math.max(0, roundForUnit(currentVal()+step, item.rendimento_unidade));
+      pendingVal = val;
+      atualEl.textContent = roundForUnit(val, item.rendimento_unidade) + ' ' + (item.rendimento_unidade||'');
+      commit(val);
+    });
+
+    const ajusteInp = card.querySelector('.pcp-ajuste-input');
+    ajusteInp.dataset.last = ajusteInp.value;
+    ajusteInp.addEventListener('blur', async ()=>{
+      if(ajusteInp.value === ajusteInp.dataset.last) return;
+      const val = parseFloat(ajusteInp.value) || 0;
+      const { error } = await db.from('pcp_demanda_diaria')
+        .upsert({ prep_id: item.id, data: todayStr(), quantidade_prevista: val }, { onConflict: 'prep_id,data' });
+      if(error){ toast('Erro: ' + error.message, false); return; }
+      pcpAjustesHoje[item.id] = val;
+      ajusteInp.dataset.last = ajusteInp.value;
+      toast('Ajuste salvo: ' + item.nome);
+      renderPcpBoard();
+    });
+    ajusteInp.addEventListener('keydown', e=>{ if(e.key==='Enter') ajusteInp.blur(); });
+
+    card.querySelector('.pcp-produzir-btn').addEventListener('click', async (e)=>{
+      const btn = e.target;
+      const qtdInp = card.querySelector('.pcp-produzir-qtd');
+      const qtd = parseFloat(qtdInp.value);
+      if(!qtd || qtd<=0){ toast('Informe uma quantidade válida pra produzir', false); return; }
+      btn.disabled = true;
+      const { error } = await db.rpc('registrar_producao', { p_prep_id: item.id, p_quantidade: qtd, p_observacao: null });
+      btn.disabled = false;
+      if(error){ toast('Erro ao registrar produção: ' + error.message, false); return; }
+      toast('Produção registrada: ' + qtd + ' ' + (item.rendimento_unidade||'') + ' de ' + item.nome);
+      await loadInsumos();
+      await loadPreps();
+    });
+
+    container.appendChild(card);
+  });
+}
+
+async function saveContagemPrep(item, qtd){
+  const today = todayStr();
+  const { error: err1 } = await db.from('prep_contagens').insert({ prep_id: item.id, data: today, quantidade: qtd });
+  if(err1) return { error: err1 };
+  const { error: err2 } = await db.from('preps').update({ estoque_atual: qtd, updated_at: new Date().toISOString() }).eq('id', item.id);
+  if(err2) return { error: err2 };
+  item.estoque_atual = qtd;
+  return { error: null };
+}
+
+function renderPrepsAdmin(){
+  const tbody = document.getElementById('prepsAdminBody');
+  if(!tbody) return;
+  tbody.innerHTML = '';
+  preps.forEach(item=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${item.nome}</td>
+      <td>${item.rendimento_quantidade ?? ''} ${item.rendimento_unidade||''}</td>
+      <td><input class="num prep-min" type="number" step="any" value="${item.estoque_minimo ?? 0}"></td>
+      <td><input class="num prep-max" type="number" step="any" value="${item.estoque_maximo ?? 0}"></td>
+      <td>${roundForUnit(Number(item.estoque_atual)||0, item.rendimento_unidade)}</td>
+      <td><button class="ghost prep-receita-btn" type="button">📋 Receita</button></td>
+    `;
+    const minInp = tr.querySelector('.prep-min');
+    const maxInp = tr.querySelector('.prep-max');
+    [minInp,maxInp].forEach(inp=>{
+      inp.dataset.last = inp.value;
+      inp.addEventListener('blur', async ()=>{
+        if(inp.value === inp.dataset.last) return;
+        const field = inp===minInp ? 'estoque_minimo' : 'estoque_maximo';
+        const val = parseFloat(inp.value)||0;
+        const { error } = await db.from('preps').update({ [field]: val, updated_at: new Date().toISOString() }).eq('id', item.id);
+        if(error){ toast('Erro: ' + error.message, false); return; }
+        item[field] = val;
+        inp.dataset.last = inp.value;
+        toast('Salvo: ' + item.nome);
+        renderPcpBoard();
+      });
+      inp.addEventListener('keydown', e=>{ if(e.key==='Enter') inp.blur(); });
+    });
+
+    const receitaTr = document.createElement('tr');
+    receitaTr.className = 'prep-receita-row hidden';
+    const receitaTd = document.createElement('td');
+    receitaTd.colSpan = 6;
+    receitaTd.innerHTML = '<div class="prep-receita-editor"></div>';
+    receitaTr.appendChild(receitaTd);
+    tr.querySelector('.prep-receita-btn').addEventListener('click', async ()=>{
+      const isHidden = receitaTr.classList.contains('hidden');
+      document.querySelectorAll('.prep-receita-row').forEach(r=> r.classList.add('hidden'));
+      if(isHidden){
+        receitaTr.classList.remove('hidden');
+        await renderReceitaEditor(item, receitaTd.querySelector('.prep-receita-editor'));
+      }
+    });
+    tbody.appendChild(tr);
+    tbody.appendChild(receitaTr);
+  });
+}
+
+async function renderReceitaEditor(item, container){
+  container.innerHTML = '<p class="muted">Carregando receita...</p>';
+  const { data, error } = await db.from('prep_itens').select('id, insumo_id, sub_prep_id, quantidade, unidade').eq('prep_id', item.id);
+  if(error){ container.innerHTML = '<p class="auth-error">Erro: ' + error.message + '</p>'; return; }
+  const itens = data || [];
+  const nomeDe = (it)=>{
+    if(it.insumo_id){ const ins = insumos.find(i=>i.id===it.insumo_id); return ins ? ins.produto + ' (insumo)' : '—'; }
+    if(it.sub_prep_id){ const sp = preps.find(p=>p.id===it.sub_prep_id); return sp ? sp.nome + ' (sub-prep)' : '—'; }
+    return '—';
+  };
+  container.innerHTML = `
+    <p class="muted" style="margin:6px 0;">Receita p/ ${item.rendimento_quantidade ?? '?'} ${item.rendimento_unidade||''} de ${item.nome}:</p>
+    <div class="receita-lista">
+      ${itens.map(it=>`<div class="list-item" data-item-id="${it.id}"><div>${nomeDe(it)} — ${it.quantidade} ${it.unidade||''}</div><button class="ghost receita-remove-btn" type="button">🗑️</button></div>`).join('') || '<p class="muted">Nenhum ingrediente ainda.</p>'}
+    </div>
+    <div class="descarte-row" style="margin-top:8px;">
+      <select class="receita-tipo"><option value="insumo">Insumo</option><option value="sub_prep">Sub-prep</option></select>
+      <select class="receita-item"></select>
+    </div>
+    <div class="descarte-row">
+      <input type="number" class="receita-qtd" step="any" placeholder="Quantidade">
+      <input type="text" class="receita-unidade" placeholder="Unidade" style="max-width:100px;">
+      <button class="ghost receita-add-btn" type="button">➕ Adicionar</button>
+    </div>
+    <p class="auth-error receita-error"></p>
+  `;
+  const tipoSel = container.querySelector('.receita-tipo');
+  const itemSel = container.querySelector('.receita-item');
+  function populateItemSel(){
+    if(tipoSel.value==='insumo'){
+      itemSel.innerHTML = insumos.map(i=>`<option value="${i.id}">${i.produto}</option>`).join('');
+    } else {
+      itemSel.innerHTML = preps.filter(p=>p.id!==item.id).map(p=>`<option value="${p.id}">${p.nome}</option>`).join('');
+    }
+  }
+  populateItemSel();
+  tipoSel.addEventListener('change', populateItemSel);
+
+  container.querySelectorAll('.receita-remove-btn').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const row = btn.closest('.list-item');
+      const { error } = await db.from('prep_itens').delete().eq('id', row.dataset.itemId);
+      if(error){ toast('Erro: ' + error.message, false); return; }
+      toast('Ingrediente removido');
+      renderReceitaEditor(item, container);
+    });
+  });
+
+  container.querySelector('.receita-add-btn').addEventListener('click', async ()=>{
+    const errEl = container.querySelector('.receita-error');
+    errEl.textContent = '';
+    const qtd = parseFloat(container.querySelector('.receita-qtd').value);
+    const unidade = container.querySelector('.receita-unidade').value.trim();
+    const itemId = itemSel.value;
+    if(!itemId){ errEl.textContent = 'Selecione um item.'; return; }
+    if(!qtd || qtd<=0){ errEl.textContent = 'Informe uma quantidade válida.'; return; }
+    if(!unidade){ errEl.textContent = 'Informe a unidade.'; return; }
+    const payload = { prep_id: item.id, quantidade: qtd, unidade };
+    if(tipoSel.value==='insumo') payload.insumo_id = itemId; else payload.sub_prep_id = itemId;
+    const { error } = await db.from('prep_itens').insert(payload);
+    if(error){ errEl.textContent = 'Erro: ' + error.message; return; }
+    toast('Ingrediente adicionado');
+    renderReceitaEditor(item, container);
+  });
+}
+
+async function loadProducoesRecentes(){
+  const box = document.getElementById('producoesRecentes');
+  if(!box) return;
+  box.innerHTML = '<p class="muted">Carregando...</p>';
+  const { data, error } = await db.from('producoes').select('*').order('created_at', {ascending:false}).limit(15);
+  if(error){ box.innerHTML = '<p class="muted">Erro ao carregar: ' + error.message + '</p>'; return; }
+  if(!data || data.length===0){ box.innerHTML = '<p class="muted">Nenhuma produção registrada ainda.</p>'; return; }
+  box.innerHTML = data.map(p=>{
+    const prep = preps.find(x=>x.id===p.prep_id);
+    const dt = new Date(p.created_at).toLocaleString('pt-BR');
+    return `<div class="list-item"><div><strong>${prep ? prep.nome : '—'}</strong></div><div>${p.quantidade} ${p.unidade||''} <span class="muted">— ${dt}</span></div></div>`;
+  }).join('');
+}
+
+document.getElementById('novoPrepBtn').addEventListener('click', async ()=>{
+  const errEl = document.getElementById('novoPrepError');
+  errEl.textContent = '';
+  const nome = document.getElementById('novoPrepNome').value.trim();
+  const rendQtd = parseFloat(document.getElementById('novoPrepRendQtd').value);
+  const rendUnidade = document.getElementById('novoPrepRendUnidade').value;
+  const min = parseFloat(document.getElementById('novoPrepMin').value) || 0;
+  const max = parseFloat(document.getElementById('novoPrepMax').value) || 0;
+  if(!nome){ errEl.textContent = 'Informe o nome do prep.'; return; }
+  if(!rendQtd || rendQtd<=0){ errEl.textContent = 'Informe o rendimento (quanto a receita produz de uma vez).'; return; }
+  const { error } = await db.from('preps').insert({
+    nome, rendimento_quantidade: rendQtd, rendimento_unidade: rendUnidade,
+    estoque_minimo: min, estoque_maximo: max
+  });
+  if(error){ errEl.textContent = 'Erro: ' + error.message; return; }
+  document.getElementById('novoPrepNome').value = '';
+  document.getElementById('novoPrepRendQtd').value = '';
+  document.getElementById('novoPrepMin').value = '';
+  document.getElementById('novoPrepMax').value = '';
+  toast('Prep cadastrado: ' + nome);
+  await loadPreps();
+});
+
+document.getElementById('searchBoxPcp').addEventListener('input', renderPcpBoard);
+
 function renderAvisos(){
   const box = document.getElementById('avisosBox');
   if(!box) return;
@@ -999,6 +1356,8 @@ document.getElementById('copiarListaBtn').addEventListener('click', ()=>{
   toast('Lista copiada!');
 });
 
+document.getElementById('novoPrepRendUnidade').innerHTML = RENDIMENTO_UNIDADES.map(u=>`<option value="${u}">${u}</option>`).join('');
+
 document.querySelectorAll('.tab').forEach(tab=>{
   tab.addEventListener('click', ()=>{
     document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
@@ -1007,6 +1366,7 @@ document.querySelectorAll('.tab').forEach(tab=>{
     document.getElementById('tab-' + tab.dataset.tab).classList.remove('hidden');
     if(tab.dataset.tab === 'historico'){ loadHistorico(); }
     if(tab.dataset.tab === 'descarte'){ loadDescartesRecentes(); }
+    if(tab.dataset.tab === 'pcp'){ loadPreps(); }
     requestAnimationFrame(updateStickyOffsets);
   });
 });
