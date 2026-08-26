@@ -1472,9 +1472,11 @@ db.auth.onAuthStateChange((event)=>{
 (async function initAuth(){
   const hash = new URLSearchParams(window.location.hash.slice(1));
   const hashType = hash.get('type');
+  const hashError = hash.get('error_description') || hash.get('error');
   const qs = new URLSearchParams(window.location.search);
   const code = qs.get('code');
   const qsType = qs.get('type');
+  const qsError = qs.get('error_description') || qs.get('error');
   let isInviteOrRecovery = (hashType === 'invite' || hashType === 'recovery' || qsType === 'invite' || qsType === 'recovery');
 
   // fluxo PKCE: o link do convite/recuperação chega com ?code=... em vez de #access_token=...
@@ -1494,6 +1496,12 @@ db.auth.onAuthStateChange((event)=>{
     return;
   }
   showScreen('login');
+  if(hashError || qsError){
+    window.history.replaceState(null, '', window.location.pathname);
+    const errEl = document.getElementById('loginError');
+    errEl.style.color = 'var(--bad)';
+    errEl.textContent = 'Esse link de recuperação/convite já foi usado ou expirou. Peça um novo clicando em "esqueci minha senha".';
+  }
 })();
 </script>
 </body>
