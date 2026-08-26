@@ -355,7 +355,7 @@
 <script>
 const SUPABASE_URL = "https://cfyfvmeggspahovblitr.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmeWZ2bWVnZ3NwYWhvdmJsaXRyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ3MzA2MTYsImV4cCI6MjEwMDMwNjYxNn0.DUJ97JnPRiK2or0Ii0Lpw2FfrSUXWPj7706mf6vULsY";
-const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { flowType: 'implicit' } });
 
 let insumos = [];
 let currentUser = null;
