@@ -32,7 +32,7 @@
   button.primary{background:var(--orange);color:#fff;border:none;padding:9px 14px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;}
   button.primary:hover{background:var(--orange-dark);}
   button.ghost{background:#fff;border:1px solid var(--line);padding:8px 12px;border-radius:8px;cursor:pointer;font-size:13px;}
-  table{width:100%;border-collapse:collapse;background:var(--card);border-radius:10px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06);}
+  table{width:100%;border-collapse:collapse;background:var(--card);border-radius:10px;box-shadow:0 1px 3px rgba(0,0,0,.06);}
   th{background:#f3e9de;text-align:left;padding:10px 8px;font-size:12px;color:var(--gray);position:sticky;z-index:26;box-shadow:0 1px 0 var(--line);}
   td{padding:7px 8px;border-top:1px solid var(--line);font-size:13px;vertical-align:middle;}
   tr.cat-row td{background:#f8f1ea;font-weight:700;color:var(--orange-dark);font-size:12px;padding:6px 8px;position:sticky;z-index:25;box-shadow:0 1px 0 var(--line);}
@@ -209,6 +209,7 @@
       <button class="ghost" id="vizDataHojeBtn" type="button">Hoje</button>
       <span class="muted" id="vizDataStatus"></span>
     </div>
+    <p id="vizUltimaAtualizacao" style="margin:0 0 12px;font-weight:600;color:var(--orange-dark);"></p>
     <div id="vizContainer"></div>
     <div class="legend">
       <span><span class="dot" style="background:var(--bad)"></span>Precisa repor</span>
@@ -365,6 +366,7 @@ let preps = [];
 let pcpAjustesHoje = {};
 let pcpLoaded = false;
 let ultimaEdicaoPorInsumo = {};
+let ultimaEdicaoGlobal = null;
 const RENDIMENTO_UNIDADES = ['un','kg','g','l','ml','pacote','rolo','maço','par'];
 
 function toast(msg, ok=true){
@@ -458,6 +460,14 @@ async function loadUltimasEdicoes(){
       ultimaEdicaoPorInsumo[r.registro_id] = { when: r.created_at, who: r.usuario_email };
     }
   });
+  ultimaEdicaoGlobal = (data && data.length) ? { when: data[0].created_at, who: data[0].usuario_email } : null;
+}
+
+function formatarQuemQuando(info){
+  if(!info || !info.when) return '';
+  const who = info.who ? (info.who.includes('@') ? info.who.split('@')[0] : info.who) : '—';
+  const d = new Date(info.when);
+  return d.toLocaleDateString('pt-BR') + ' às ' + d.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'}) + ' por ' + who;
 }
 
 function ultimaEdicaoTexto(item){
@@ -584,6 +594,7 @@ async function commitJar(item, jarEl, val){
   }
   toast('Salvo: ' + item.produto + ' — ' + val + ' ' + (item.unidade||''));
   ultimaEdicaoPorInsumo[item.id] = { when: new Date().toISOString(), who: currentUser?.email || null };
+  ultimaEdicaoGlobal = ultimaEdicaoPorInsumo[item.id];
   renderVisaoGeral();
 }
 
@@ -702,11 +713,13 @@ async function getPosicaoSnapshot(dataStr){
 async function renderVisaoGeral(){
   const sel = document.getElementById('vizDataSelect');
   const statusEl = document.getElementById('vizDataStatus');
+  const ultimaEl = document.getElementById('vizUltimaAtualizacao');
   const dataStr = sel ? sel.value : '';
   const isLive = !dataStr || dataStr === todayStr();
 
   if(isLive){
     if(statusEl) statusEl.textContent = '📍 Posição de agora — somente leitura';
+    if(ultimaEl) ultimaEl.textContent = ultimaEdicaoGlobal ? ('🕐 Última atualização: ' + formatarQuemQuando(ultimaEdicaoGlobal)) : '';
     const list = filteredInsumos('searchBoxViz','catFilterViz');
     renderJarGrid(document.getElementById('vizContainer'), list, false, true, true);
     return;
@@ -714,6 +727,7 @@ async function renderVisaoGeral(){
 
   const [ano,mes,dia] = dataStr.split('-');
   if(statusEl) statusEl.textContent = '🔒 Posição fechada em ' + dia + '/' + mes + '/' + ano + ' às 23:59 — somente leitura';
+  if(ultimaEl) ultimaEl.textContent = '';
   const full = await getPosicaoSnapshot(dataStr);
   const term = (document.getElementById('searchBoxViz').value || '').toLowerCase();
   const cat = document.getElementById('catFilterViz').value;
@@ -777,6 +791,7 @@ function renderEstoque(){
         badge.textContent = ns.label;
         updateSummary();
         ultimaEdicaoPorInsumo[item.id] = { when: new Date().toISOString(), who: currentUser?.email || null };
+  ultimaEdicaoGlobal = ultimaEdicaoPorInsumo[item.id];
         renderVisaoGeral();
       };
       input.addEventListener('blur', saveField);
@@ -1015,6 +1030,7 @@ document.getElementById('descarteBtn').addEventListener('click', async ()=>{
       } else {
         item.estoque_atual = novoEstoque;
         ultimaEdicaoPorInsumo[item.id] = { when: new Date().toISOString(), who: currentUser?.email || null };
+  ultimaEdicaoGlobal = ultimaEdicaoPorInsumo[item.id];
       }
     }
     renderVisaoGeral(); renderEstoque(); renderContagem(); updateSummary(); renderAvisos();
