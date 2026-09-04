@@ -72,6 +72,10 @@
   .jar-plus{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:20px;color:var(--gray);}
   .jar-label{font-size:10.5px;color:var(--gray);line-height:1.2;}
   .jar-updated{font-size:9px;color:var(--gray);opacity:.75;line-height:1.1;}
+  .jar-archive-btn{font-size:9.5px;padding:2px 6px;margin-top:2px;color:var(--bad);border-color:var(--bad);background:#fff;}
+  .jar-archive-btn:hover{background:var(--bad);color:#fff;}
+  .arquivado-item{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px dashed var(--line);font-size:13px;}
+  .arquivado-item:last-child{border-bottom:none;}
   .jar-qty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--ink);pointer-events:none;z-index:2;text-shadow:0 1px 3px rgba(255,255,255,.85), 0 0 6px rgba(255,255,255,.6);}
   .jar-qty .u{font-size:9px;font-weight:600;color:var(--gray);text-shadow:0 1px 2px rgba(255,255,255,.85);}
   .jar-steppers{display:flex;gap:6px;}
@@ -255,6 +259,35 @@
       <select id="catFilterCont"><option value="">Todas as categorias</option></select>
       <span class="muted" id="dataContagem"></span>
     </div>
+
+    <div class="admin-only">
+      <details id="novoItemToggle" style="margin-bottom:10px;">
+        <summary style="cursor:pointer;font-size:13px;color:var(--orange-dark);font-weight:700;">➕ Incluir novo item</summary>
+        <div class="descarte-form" style="max-width:560px;margin-top:8px;">
+          <div class="descarte-row">
+            <input type="text" id="novoItemCategoria" list="categoriasDatalist" placeholder="Categoria (existente ou nova)">
+            <input type="text" id="novoItemProduto" placeholder="Nome do produto">
+          </div>
+          <datalist id="categoriasDatalist"></datalist>
+          <div class="descarte-row">
+            <input type="text" id="novoItemUnidade" placeholder="Unidade (ex: kg, unidade, litro)">
+            <input type="number" id="novoItemPreco" step="any" placeholder="Preço unit. (opcional)">
+          </div>
+          <div class="descarte-row">
+            <input type="number" id="novoItemMin" step="any" placeholder="Estoque mínimo (opcional)">
+            <input type="number" id="novoItemMax" step="any" placeholder="Estoque máximo (opcional)">
+          </div>
+          <button class="primary" id="novoItemBtn" type="button">➕ Incluir item</button>
+          <p class="auth-error" id="novoItemError"></p>
+        </div>
+      </details>
+
+      <details id="arquivadosToggle" style="margin-bottom:14px;">
+        <summary style="cursor:pointer;font-size:13px;color:var(--gray);font-weight:700;">🗄️ Itens arquivados</summary>
+        <div id="arquivadosContainer" style="margin-top:8px;"><p class="muted">Carregando...</p></div>
+      </details>
+    </div>
+
     <div id="contagemContainer"></div>
   </section>
 
@@ -485,7 +518,7 @@ function ultimaEdicaoTexto(item){
 async function loadInsumos(){
   const lastLoadEl = document.getElementById('lastLoad');
   if(lastLoadEl) lastLoadEl.textContent = 'Carregando...';
-  const { data, error } = await db.from('insumos').select('*').order('categoria', {ascending:true}).order('produto', {ascending:true});
+  const { data, error } = await db.from('insumos').select('*').eq('ativo', true).order('categoria', {ascending:true}).order('produto', {ascending:true});
   if(error){ toast('Erro ao carregar: ' + error.message, false); return; }
   insumos = data;
   await loadUltimasEdicoes();
@@ -508,6 +541,45 @@ function populateCategoryFilters(){
     sel.innerHTML = '<option value="">Todas as categorias</option>' + cats.map(c=>`<option value="${c}">${c}</option>`).join('');
     sel.value = current;
   }
+  const datalist = document.getElementById('categoriasDatalist');
+  if(datalist) datalist.innerHTML = cats.map(c=>`<option value="${c}"></option>`).join('');
+}
+
+async function arquivarInsumo(item){
+  if(!confirm('Arquivar "' + item.produto + '"? Ele some das telas, mas o histórico (contagens, posições passadas) continua salvo — dá pra reativar depois em "Itens arquivados".')) return;
+  const { error } = await db.from('insumos').update({ ativo: false, updated_at: new Date().toISOString() }).eq('id', item.id);
+  if(error){ toast('Erro ao arquivar: ' + error.message, false); return; }
+  insumos = insumos.filter(i=>i.id!==item.id);
+  toast('Item arquivado: ' + item.produto);
+  populateCategoryFilters();
+  populateDescarteInsumoSelect();
+  renderVisaoGeral(); renderEstoque(); renderContagem(); updateSummary(); renderAvisos();
+}
+
+async function loadArquivados(){
+  const box = document.getElementById('arquivadosContainer');
+  if(!box) return;
+  box.innerHTML = '<p class="muted">Carregando...</p>';
+  const { data, error } = await db.from('insumos').select('*').eq('ativo', false).order('produto');
+  if(error){ box.innerHTML = '<p class="muted">Erro ao carregar: ' + error.message + '</p>'; return; }
+  if(!data || data.length===0){ box.innerHTML = '<p class="muted">Nenhum item arquivado.</p>'; return; }
+  box.innerHTML = '';
+  data.forEach(item=>{
+    const row = document.createElement('div');
+    row.className = 'arquivado-item';
+    row.innerHTML = `<span>${item.produto} <small class="muted">(${item.categoria||'Sem categoria'})</small></span>`;
+    const btn = document.createElement('button');
+    btn.className = 'ghost'; btn.type = 'button'; btn.textContent = '↩️ Reativar';
+    btn.addEventListener('click', async ()=>{
+      const { error: err2 } = await db.from('insumos').update({ ativo: true, updated_at: new Date().toISOString() }).eq('id', item.id);
+      if(err2){ toast('Erro ao reativar: ' + err2.message, false); return; }
+      toast('Reativado: ' + item.produto);
+      await loadInsumos();
+      loadArquivados();
+    });
+    row.appendChild(btn);
+    box.appendChild(row);
+  });
 }
 
 function updateSummary(){
@@ -636,6 +708,7 @@ function renderJarGrid(container, list, allowSetup, readonly, showLastEdit){
         </div>`}
         <span class="jar-label">${item.produto}</span>
         ${showLastEdit ? `<span class="jar-updated">${ultimaEdicaoTexto(item)}</span>` : ''}
+        ${(allowSetup && !readonly) ? '<button class="ghost jar-archive-btn" type="button">🗑️ arquivar</button>' : ''}
       `;
       if(!readonly){
         const jarEl = wrap.querySelector('.jar');
@@ -655,6 +728,7 @@ function renderJarGrid(container, list, allowSetup, readonly, showLastEdit){
           <input type="number" class="mini-min" placeholder="mín" value="${item.estoque_minimo ?? 0}">
           <input type="number" class="mini-max" placeholder="máx" value="${item.estoque_maximo ?? 0}">
         </div>
+        ${!readonly ? '<button class="ghost jar-archive-btn" type="button">🗑️ arquivar</button>' : ''}
       `;
       const jarEl = wrap.querySelector('.jar');
       const mini = wrap.querySelector('.setup-mini');
@@ -677,6 +751,8 @@ function renderJarGrid(container, list, allowSetup, readonly, showLastEdit){
         inp.addEventListener('keydown', e=>{ if(e.key==='Enter') inp.blur(); });
       });
     }
+    const archiveBtn = wrap.querySelector('.jar-archive-btn');
+    if(archiveBtn) archiveBtn.addEventListener('click', ()=> arquivarInsumo(item));
     grid.appendChild(wrap);
   });
   if(list.length===0){
@@ -1399,6 +1475,44 @@ document.getElementById('searchBox').addEventListener('input', renderEstoque);
 document.getElementById('catFilter').addEventListener('change', renderEstoque);
 document.getElementById('searchBoxCont').addEventListener('input', renderContagem);
 document.getElementById('catFilterCont').addEventListener('change', renderContagem);
+
+document.getElementById('novoItemBtn').addEventListener('click', async ()=>{
+  const errEl = document.getElementById('novoItemError');
+  errEl.textContent = '';
+  const categoria = document.getElementById('novoItemCategoria').value.trim();
+  const produto = document.getElementById('novoItemProduto').value.trim();
+  const unidade = document.getElementById('novoItemUnidade').value.trim();
+  const preco = parseFloat(document.getElementById('novoItemPreco').value);
+  const min = parseFloat(document.getElementById('novoItemMin').value);
+  const max = parseFloat(document.getElementById('novoItemMax').value);
+  if(!categoria){ errEl.textContent = 'Informe a categoria.'; return; }
+  if(!produto){ errEl.textContent = 'Informe o nome do produto.'; return; }
+  const btn = document.getElementById('novoItemBtn');
+  btn.disabled = true;
+  const { error } = await db.from('insumos').insert({
+    categoria, produto,
+    unidade: unidade || null,
+    valor_unitario: isNaN(preco) ? null : preco,
+    estoque_minimo: isNaN(min) ? 0 : min,
+    estoque_maximo: isNaN(max) ? 0 : max,
+    ativo: true
+  });
+  btn.disabled = false;
+  if(error){ errEl.textContent = 'Erro: ' + error.message; return; }
+  document.getElementById('novoItemCategoria').value = '';
+  document.getElementById('novoItemProduto').value = '';
+  document.getElementById('novoItemUnidade').value = '';
+  document.getElementById('novoItemPreco').value = '';
+  document.getElementById('novoItemMin').value = '';
+  document.getElementById('novoItemMax').value = '';
+  toast('Item incluído: ' + produto);
+  document.getElementById('novoItemToggle').open = false;
+  await loadInsumos();
+});
+
+document.getElementById('arquivadosToggle').addEventListener('toggle', function(){
+  if(this.open) loadArquivados();
+});
 document.getElementById('refreshBtn').addEventListener('click', loadInsumos);
 document.getElementById('refreshHistoricoBtn').addEventListener('click', loadHistorico);
 document.getElementById('gerarListaBtn').addEventListener('click', gerarListaCompras);
