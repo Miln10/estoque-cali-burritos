@@ -12,7 +12,7 @@ const SITUACAO = {
   conferida:'Impressão conferida no papel',
   falha:'Falha relatada'
 };
-const E = { preps:[], regras:{}, sel:null, reqId:null, copias:1, busy:false, lotes:[], dlg:null, carregado:false };
+const E = { preps:[], regras:{}, cubas:[], sel:null, reqId:null, copias:1, busy:false, lotes:[], dlg:null, carregado:false };
 
 // ---------- datas (Brasil sem horário de verão desde 2019: America/Sao_Paulo = UTC-3 fixo) ----------
 const SP_OFF = 3 * 3600e3;
@@ -36,6 +36,19 @@ function uuid(){
   const h = [...b].map(x => p2(x.toString(16))).join('');
   return `${h.slice(0,8)}-${h.slice(8,12)}-${h.slice(12,16)}-${h.slice(16,20)}-${h.slice(20)}`;
 }
+const fmtKg = g => (Number(g) / 1000).toFixed(3).replace('.', ',') + ' kg';
+function parseKg(v){ const t = String(v ?? '').trim(); if(!/^\d{1,3}([.,]\d{1,3})?$/.test(t)) return NaN; return Math.round(parseFloat(t.replace(',', '.')) * 1000); }
+// Lê peso + cuba do formulário. A conta oficial é refeita no servidor.
+function pesoAtual(){
+  const bruto = parseKg($('etqPeso').value), sel = $('etqCuba').value;
+  if(!$('etqPeso').value.trim()) return { erro:'Informe o peso que a balança mostrou.' };
+  if(isNaN(bruto) || bruto <= 0) return { erro:'Peso inválido. Digite em kg, por exemplo 5,800.' };
+  if(!sel) return { erro:'Escolha a cuba usada (ou "Sem cuba").' };
+  let tara = 0, cubaId = null;
+  if(sel !== 'sem'){ const c = E.cubas.find(x => x.id === sel); if(!c) return { erro:'Cuba não encontrada. Recarregue a página.' }; tara = Math.round(Number(c.tara_g)); cubaId = c.id; }
+  if(bruto - tara <= 0) return { erro:`O peso na balança (${fmtKg(bruto)}) precisa ser maior que a tara da cuba (${fmtKg(tara)}).` };
+  return { bruto, tara, liq:bruto - tara, cubaId };
+}
 function descRegra(r){
   if(!r || !r.modo) return 'sem validade';
   if(!r.ativa) return 'desativada';
@@ -44,7 +57,7 @@ function descRegra(r){
   return 'no dia, até 23h59';
 }
 const pronto = r => !!(r && r.ativa && r.modo);
-const msgErro = e => { const m = (e && e.message) || String(e); return m.includes('sem_validade') ? 'O admin ainda não definiu a validade deste prep.' : m; };
+const msgErro = e => { const m = (e && e.message) || String(e); return m.includes('sem_validade') ? 'O admin ainda não definiu a validade deste prep.' : m.replace(/^(peso_invalido|cuba_invalida): /, ''); };
 
 // ---------- desenho da etiqueta (SVG 400x240 = 50x30 mm a 8 pontos/mm) ----------
 const mctx = document.createElement('canvas').getContext('2d');
@@ -70,7 +83,8 @@ function buildLabel(o){
   const nm = fitName(o.nome, CW);
   if(!nm) return { erro:'O nome do prep não cabe na etiqueta. Encurte o nome.' };
   const fabT = `FAB ${fmtCurta(o.fab)}`, valT = `VAL ${fmtCurta(o.val)}`, loteT = `Lote ${o.lote}`;
-  const sF = fit1(fabT, CW, 28, 18, true), sV = fit1(valT, CW - 24, 36, 20, true), sL = fit1(loteT, CW, 24, 14, false);
+  const pesoT = o.pesoG != null ? `Líq. ${fmtKg(o.pesoG)}` : '', pesoW = pesoT ? tw(pesoT, 26, true) + 14 : 0;
+  const sF = fit1(fabT, CW, 28, 18, true), sV = fit1(valT, CW - 24, 36, 20, true), sL = fit1(loteT, CW - pesoW, 24, 14, false);
   if(!sF || !sV || !sL) return { erro:'O lote é longo demais para caber na etiqueta.' };
   const lh = nm.size * 1.08, y0 = 12 + (80 - lh * nm.lines.length) / 2;
   const nameSvg = nm.lines.map((t, i) => `<text x="${W/2}" y="${(y0 + lh * (i + .82)).toFixed(1)}" font-size="${nm.size}" font-weight="700" text-anchor="middle">${esc(t)}</text>`).join('');
@@ -80,7 +94,8 @@ function buildLabel(o){
     `<text x="${M}" y="128" font-size="${sF}" font-weight="700">${esc(fabT)}</text>` +
     `<rect x="${M}" y="138" width="${CW}" height="56" rx="4" fill="none" stroke="#000" stroke-width="3"/>` +
     `<text x="${W/2}" y="${(166 + sV * .35).toFixed(1)}" font-size="${sV}" font-weight="700" text-anchor="middle">${esc(valT)}</text>` +
-    `<text x="${M}" y="224" font-size="${sL}">${esc(loteT)}</text></svg>`;
+    `<text x="${M}" y="224" font-size="${sL}">${esc(loteT)}</text>` +
+    (pesoT ? `<text x="${W-M}" y="224" font-size="26" font-weight="700" text-anchor="end">${esc(pesoT)}</text>` : '') + `</svg>`;
   return { svg };
 }
 function svgToPng(svg, scale = 2){
@@ -126,11 +141,15 @@ async function baixarPng(svg, nome){
 
 // ---------- carga ----------
 async function carregar(){
-  const [p, r] = await Promise.all([
+  const [p, r, c] = await Promise.all([
     db.from('preps').select('id,nome').order('nome'),
-    db.from('etiqueta_regras').select('prep_id,modo,duracao,ativa')
+    db.from('etiqueta_regras').select('prep_id,modo,duracao,ativa'),
+    db.from('cubas').select('id,nome,tara_g,ativa').order('nome')
   ]);
-  if(p.error || r.error){ toast('Erro ao carregar etiquetas: ' + (p.error || r.error).message, false); return; }
+  if(p.error || r.error || c.error){ toast('Erro ao carregar etiquetas: ' + (p.error || r.error || c.error).message, false); return; }
+  E.cubas = c.data || [];
+  renderCubaSelect();
+  if(currentRole === 'admin') renderCubas();
   E.preps = p.data || [];
   E.regras = {}; (r.data || []).forEach(x => E.regras[x.prep_id] = x);
   E.carregado = true;
@@ -152,10 +171,17 @@ function renderLista(){
     return `<button type="button" class="etq-prep${pronto(r) ? '' : ' sem'}${E.sel && E.sel.id === p.id ? ' sel' : ''}" data-id="${esc(p.id)}"><strong>${esc(p.nome)}</strong><span class="muted">${esc(descRegra(r))}</span></button>`;
   }).join('');
 }
+function renderCubaSelect(){
+  const s = $('etqCuba'), atual = s.value;
+  s.innerHTML = '<option value="">— escolha a cuba —</option>' +
+    E.cubas.filter(c => c.ativa).map(c => `<option value="${esc(c.id)}">${esc(c.nome)} (tara ${fmtKg(c.tara_g)})</option>`).join('') +
+    '<option value="sem">Sem cuba (o peso já é líquido)</option>';
+  if([...s.options].some(o => o.value === atual)) s.value = atual;
+}
 function limparSel(){ E.sel = null; $('etqForm').classList.add('hidden'); renderLista(); }
 function selecionar(p, manter){
   E.sel = p;
-  if(!manter){ E.reqId = uuid(); E.copias = 1; $('etqFab').value = toInputSP(new Date()); $('etqLote').value = ''; $('etqCopias').textContent = '1'; }
+  if(!manter){ E.reqId = uuid(); E.copias = 1; $('etqFab').value = toInputSP(new Date()); $('etqLote').value = ''; $('etqCopias').textContent = '1'; $('etqPeso').value = ''; $('etqCuba').value = ''; }
   $('etqForm').classList.remove('hidden');
   $('etqSelNome').textContent = p.nome;
   const r = E.regras[p.id], ok = pronto(r);
@@ -172,7 +198,10 @@ function preview(){
   const r = E.regras[E.sel.id], fab = fromInputSP($('etqFab').value);
   if(!pronto(r)){ box.innerHTML = '<p class="muted" style="padding:10px;">Sem prévia: validade não definida.</p>'; return; }
   if(isNaN(fab)){ box.innerHTML = '<p class="muted" style="padding:10px;">Informe a data e hora de fabricação.</p>'; return; }
-  const out = buildLabel({ nome:E.sel.nome, fab, val:calcValidade(r.modo, r.duracao, fab), lote:$('etqLote').value.trim() || 'automático' });
+  const ps = pesoAtual(), conta = $('etqPesoConta');
+  conta.textContent = ps.erro ? ($('etqPeso').value.trim() || $('etqCuba').value ? ps.erro : '') : `${fmtKg(ps.bruto)} − ${fmtKg(ps.tara)} (cuba) = ${fmtKg(ps.liq)} líquido`;
+  conta.style.color = ps.erro ? 'var(--bad)' : 'var(--ok)';
+  const out = buildLabel({ nome:E.sel.nome, fab, val:calcValidade(r.modo, r.duracao, fab), lote:$('etqLote').value.trim() || 'automático', pesoG:ps.erro ? null : ps.liq });
   box.innerHTML = out.erro ? `<p class="auth-error" style="padding:10px;">${esc(out.erro)}</p>` : out.svg;
 }
 function mudouCampo(){ E.reqId = uuid(); $('etqErro').textContent = ''; preview(); }
@@ -184,11 +213,14 @@ async function emitir(){
   if(!pronto(r)){ err.textContent = 'Validade não definida para este prep.'; return; }
   const fab = fromInputSP($('etqFab').value);
   if(isNaN(fab)){ err.textContent = 'Informe a data e hora de fabricação.'; return; }
-  const previa = buildLabel({ nome:E.sel.nome, fab, val:calcValidade(r.modo, r.duracao, fab), lote:$('etqLote').value.trim() || 'automático' });
+  const ps = pesoAtual();
+  if(ps.erro){ err.textContent = ps.erro; return; }
+  const previa = buildLabel({ nome:E.sel.nome, fab, val:calcValidade(r.modo, r.duracao, fab), lote:$('etqLote').value.trim() || 'automático', pesoG:ps.liq });
   if(previa.erro){ err.textContent = previa.erro; return; }
   E.busy = true; $('etqEmitirBtn').disabled = true; $('etqEmitirBtn').textContent = 'Emitindo…';
-  const { data, error } = await db.rpc('emitir_etiqueta', {
+  const { data, error } = await db.rpc('emitir_etiqueta_com_peso', {
     p_request_id:E.reqId, p_prep_id:E.sel.id, p_fabricado_em:fab.toISOString(),
+    p_peso_bruto_g:ps.bruto, p_cuba_id:ps.cubaId,
     p_lote:$('etqLote').value.trim() || null, p_copias:E.copias
   });
   E.busy = false; $('etqEmitirBtn').textContent = '🏷️ Emitir etiqueta'; $('etqEmitirBtn').disabled = !pronto(E.regras[E.sel.id]);
@@ -197,13 +229,13 @@ async function emitir(){
   E.reqId = uuid();
   toast(data.repetido ? 'Etiqueta já emitida (sem duplicar).' : 'Etiqueta emitida: lote ' + l.lote);
   abrirDialog(l, l.copias, data.impressao_id);
-  $('etqLote').value = '';
+  $('etqLote').value = ''; $('etqPeso').value = ''; preview();
   carregarHistorico();
 }
 
 // ---------- diálogo com a etiqueta final (sempre desenhada a partir do que o servidor gravou) ----------
 function abrirDialog(l, copias, impId){
-  const out = buildLabel({ nome:l.prep_nome, fab:new Date(l.fabricado_em), val:new Date(l.validade_em), lote:l.lote });
+  const out = buildLabel({ nome:l.prep_nome, fab:new Date(l.fabricado_em), val:new Date(l.validade_em), lote:l.lote, pesoG:l.peso_liquido_g });
   if(out.erro){ toast(out.erro, false); return; }
   E.dlg = { svg:out.svg, l, copias, impId:impId || null, used:false, busy:false };
   $('etqDialogLabel').innerHTML = out.svg;
@@ -325,6 +357,7 @@ function renderHistorico(){
     return `<div class="etq-hist">
       <div class="etq-hist-head"><strong>${esc(l.prep_nome)}</strong><span class="badge ${st[1]}">${st[0]}</span></div>
       <div class="muted">Lote ${esc(l.lote)} · FAB ${fmtCurta(l.fabricado_em)} · VAL ${fmtCurta(l.validade_em)}</div>
+      ${l.peso_liquido_g != null ? `<div class="muted">Líquido ${fmtKg(l.peso_liquido_g)} (balança ${fmtKg(l.peso_bruto_g)} − ${l.cuba_nome ? 'cuba ' + esc(l.cuba_nome) + ' ' + fmtKg(l.tara_g) : 'sem cuba'})</div>` : ''}
       <div class="muted">Emitida por ${esc(quem || '—')} · ${imps.length} tentativa(s)${ult ? ' · ' + esc(SITUACAO[ult.situacao] || ult.situacao) : ''}</div>
       <div class="etq-hist-btns">
         <button type="button" class="ghost" data-act="ver" data-id="${esc(l.id)}">Ver / baixar</button>
@@ -382,10 +415,42 @@ async function salvarValidade(tr){
   if(E.sel && E.sel.id === id) selecionar(E.sel, true);
 }
 
+// ---------- cubas (admin) ----------
+function renderCubas(){
+  const tb = $('etqCubasBody'); if(!tb) return;
+  tb.innerHTML = E.cubas.length ? E.cubas.map(c => `<tr data-id="${esc(c.id)}">
+      <td><input type="text" class="c-nome" maxlength="60" value="${esc(c.nome)}" style="width:100%;"></td>
+      <td><input type="text" class="c-tara num" inputmode="decimal" value="${(Number(c.tara_g) / 1000).toFixed(3).replace('.', ',')}" style="width:90px;"> kg</td>
+      <td style="text-align:center;"><input type="checkbox" class="c-ativa"${c.ativa ? ' checked' : ''}></td>
+      <td><button type="button" class="primary c-salvar">Salvar</button></td></tr>`).join('')
+    : '<tr><td colspan="4" class="muted">Nenhuma cuba cadastrada. Pese a cuba vazia e cadastre acima.</td></tr>';
+}
+function lerCuba(nomeEl, taraEl){
+  const nome = nomeEl.value.trim(), tara = parseKg(taraEl.value);
+  if(!nome){ toast('Informe o nome da cuba.', false); return null; }
+  if(isNaN(tara) || tara <= 0 || tara > 50000){ toast('Tara inválida. Digite em kg, por exemplo 1,250.', false); return null; }
+  return { nome, tara_g:tara };
+}
+async function novaCuba(){
+  const v = lerCuba($('etqCubaNome'), $('etqCubaTara')); if(!v) return;
+  const { error } = await db.from('cubas').insert(v);
+  if(error){ toast(error.code === '23505' ? 'Já existe uma cuba com esse nome.' : 'Erro ao salvar: ' + error.message, false); return; }
+  $('etqCubaNome').value = ''; $('etqCubaTara').value = '';
+  toast('Cuba cadastrada.'); carregar();
+}
+async function salvarCuba(tr){
+  const v = lerCuba(tr.querySelector('.c-nome'), tr.querySelector('.c-tara')); if(!v) return;
+  v.ativa = tr.querySelector('.c-ativa').checked; v.atualizado_por = currentUser.id; v.updated_at = new Date().toISOString();
+  const { data, error } = await db.from('cubas').update(v).eq('id', tr.dataset.id).select('id');
+  if(error){ toast(error.code === '23505' ? 'Já existe uma cuba com esse nome.' : 'Erro ao salvar: ' + error.message, false); return; }
+  if(!data || !data.length){ toast('Não foi possível salvar (sem permissão?).', false); return; }
+  toast('Cuba salva.'); carregar();
+}
+
 // ---------- ligações ----------
 function subtab(nome){
   document.querySelectorAll('.etq-sub button').forEach(b => b.classList.toggle('active', b.dataset.sub === nome));
-  ['imprimir', 'historico', 'validades'].forEach(n => $('etq-' + n).classList.toggle('hidden', n !== nome));
+  ['imprimir', 'historico', 'validades', 'cubas'].forEach(n => $('etq-' + n).classList.toggle('hidden', n !== nome));
   if(nome === 'historico') carregarHistorico();
   requestAnimationFrame(() => window.updateStickyOffsets && updateStickyOffsets());
 }
@@ -394,6 +459,10 @@ $('etqBusca').addEventListener('input', renderLista);
 $('etqPreps').addEventListener('click', e => { const b = e.target.closest('.etq-prep'); if(!b) return; const p = E.preps.find(x => x.id === b.dataset.id); if(p) selecionar(p); });
 $('etqFab').addEventListener('input', mudouCampo);
 $('etqLote').addEventListener('input', mudouCampo);
+$('etqPeso').addEventListener('input', mudouCampo);
+$('etqCuba').addEventListener('change', mudouCampo);
+$('etqCubaAdd') && $('etqCubaAdd').addEventListener('click', novaCuba);
+$('etqCubasBody') && $('etqCubasBody').addEventListener('click', e => { const b = e.target.closest('.c-salvar'); if(b) salvarCuba(b.closest('tr')); });
 $('etqMenos').addEventListener('click', () => { E.copias = Math.max(1, E.copias - 1); $('etqCopias').textContent = E.copias; E.reqId = uuid(); });
 $('etqMais').addEventListener('click', () => { E.copias = Math.min(50, E.copias + 1); $('etqCopias').textContent = E.copias; E.reqId = uuid(); });
 $('etqEmitirBtn').addEventListener('click', emitir);
@@ -420,5 +489,5 @@ $('etqValBody') && $('etqValBody').addEventListener('change', e => {
 $('etqValBody') && $('etqValBody').addEventListener('click', e => { const b = e.target.closest('.v-salvar'); if(b) salvarValidade(b.closest('tr')); });
 
 window.loadEtiquetas = carregar;
-window.__etq = { calcValidade, buildLabel, fmtCurta, fromInputSP, toInputSP };
+window.__etq = { calcValidade, buildLabel, fmtCurta, fromInputSP, toInputSP, parseKg, fmtKg };
 })();

@@ -408,6 +408,7 @@
       <button type="button" class="active" data-sub="imprimir">Imprimir</button>
       <button type="button" data-sub="historico">Histórico</button>
       <button type="button" class="admin-only" data-sub="validades" id="etqSubValidades">Validades</button>
+      <button type="button" class="admin-only" data-sub="cubas">Cubas</button>
     </div>
 
     <div id="etq-imprimir">
@@ -426,6 +427,9 @@
         <div class="etq-form">
           <div class="etq-box">
             <label class="etq-field">Fabricação (horário de Brasília)<input type="datetime-local" id="etqFab"></label>
+            <label class="etq-field">Peso na balança, com a cuba (kg)<input type="text" id="etqPeso" inputmode="decimal" placeholder="ex: 5,800" autocomplete="off"></label>
+            <label class="etq-field">Cuba usada<select id="etqCuba" style="padding:10px;font-size:15px;"></select></label>
+            <p class="muted" id="etqPesoConta" style="margin:0;font-weight:700;min-height:16px;"></p>
             <label class="etq-field">Lote (deixe vazio para gerar automático)<input type="text" id="etqLote" maxlength="40" placeholder="ex: 261110-01" autocomplete="off"></label>
             <div class="etq-field">Cópias
               <div class="etq-step"><button type="button" class="step-btn" id="etqMenos" aria-label="Menos uma cópia">−</button><span id="etqCopias">1</span><button type="button" class="step-btn" id="etqMais" aria-label="Mais uma cópia">+</button></div>
@@ -452,6 +456,19 @@
       <table>
         <thead><tr><th>Prep</th><th>Como conta a validade</th><th>Duração</th><th>Ativa</th><th></th></tr></thead>
         <tbody id="etqValBody"></tbody>
+      </table>
+    </div>
+
+    <div id="etq-cubas" class="hidden admin-only">
+      <p class="hint-top">Pese cada tipo de cuba vazia (com a tampa, se ela for junto para a balança) e cadastre a tara. Ao emitir a etiqueta, o sistema desconta a tara da cuba escolhida e imprime o peso líquido. Mudar a tara depois não altera etiquetas já emitidas.</p>
+      <div class="descarte-form" style="max-width:520px;margin-bottom:14px;">
+        <input type="text" id="etqCubaNome" maxlength="60" placeholder="Nome da cuba (ex: GN 1/1 funda)">
+        <input type="text" id="etqCubaTara" inputmode="decimal" placeholder="Tara em kg (ex: 1,250)">
+        <button type="button" class="primary" id="etqCubaAdd">➕ Cadastrar cuba</button>
+      </div>
+      <table>
+        <thead><tr><th>Cuba</th><th>Tara</th><th>Ativa</th><th></th></tr></thead>
+        <tbody id="etqCubasBody"></tbody>
       </table>
     </div>
   </section>
@@ -1773,6 +1790,6 @@ db.auth.onAuthStateChange((event)=>{
 })();
 </script>
 <script src="niimbot.js?v=2.6.0"></script>
-<script src="etiquetas.js?v=2"></script>
+<script src="etiquetas.js?v=3"></script>
 </body>
 </html>
