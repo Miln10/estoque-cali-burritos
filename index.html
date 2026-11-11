@@ -16,8 +16,8 @@
   header{background:linear-gradient(135deg,var(--orange),var(--orange-dark));color:#fff;padding:14px 24px;position:sticky;top:0;z-index:30;box-shadow:0 2px 8px rgba(0,0,0,.15);}
   header h1{margin:0;font-size:19px;}
   header p{margin:3px 0 0;font-size:12px;opacity:.9;}
-  .tabs{display:flex;gap:6px;padding:8px 24px 0;background:var(--orange-dark);position:sticky;z-index:29;}
-  .tab{padding:9px 16px;border-radius:8px 8px 0 0;background:rgba(255,255,255,.15);color:#fff;cursor:pointer;font-size:14px;font-weight:600;border:none;}
+  .tabs{display:flex;gap:6px;padding:8px 24px 0;background:var(--orange-dark);position:sticky;z-index:29;overflow-x:auto;}
+  .tab{padding:9px 16px;border-radius:8px 8px 0 0;background:rgba(255,255,255,.15);color:#fff;cursor:pointer;font-size:14px;font-weight:600;border:none;white-space:nowrap;flex:none;}
   .tab.active{background:var(--cream);color:var(--orange-dark);}
   .tab[data-tab="pcp"]{background:var(--pcp);color:#fff;font-size:16px;font-weight:800;padding:11px 22px;box-shadow:0 2px 6px rgba(0,0,0,.2);transform:translateY(-1px);}
   .tab[data-tab="pcp"]:hover{background:var(--pcp-dark);}
@@ -135,6 +135,33 @@
   .pw-wrap{position:relative;width:100%;margin-bottom:10px;}
   .pw-wrap input{width:100%;padding-right:38px;margin-bottom:0;}
   .pw-toggle{position:absolute;right:4px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;padding:6px;line-height:1;color:var(--gray);}
+
+  /* Etiquetas */
+  .etq-sub{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;}
+  .etq-sub button{min-height:44px;padding:8px 16px;border-radius:8px;border:1px solid var(--line);background:#fff;font-size:14px;font-weight:600;cursor:pointer;}
+  .etq-sub button.active{background:var(--orange);color:#fff;border-color:var(--orange);}
+  .etq-preps{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;margin:12px 0 16px;}
+  .etq-prep{min-height:64px;text-align:left;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;cursor:pointer;display:flex;flex-direction:column;gap:3px;font-size:14px;}
+  .etq-prep.sem{opacity:.65;}
+  .etq-prep.sel{border-color:var(--orange);outline:2px solid var(--orange);}
+  .etq-form{display:grid;grid-template-columns:minmax(260px,1fr) minmax(260px,1fr);gap:18px;align-items:start;}
+  @media(max-width:720px){.etq-form{grid-template-columns:1fr;}}
+  .etq-box{background:#fff;border:1px solid var(--line);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:12px;}
+  .etq-field{display:flex;flex-direction:column;gap:4px;font-size:13px;}
+  .etq-field input{padding:10px;border:1px solid var(--line);border-radius:8px;font-size:15px;width:100%;}
+  .etq-step{display:flex;align-items:center;gap:12px;font-size:18px;font-weight:700;}
+  .etq-step .step-btn{width:44px;height:44px;font-size:22px;}
+  .etq-box button.primary{min-height:48px;font-size:15px;}
+  .etq-label{border:1px dashed var(--gray);background:#fff;border-radius:4px;padding:6px;max-width:440px;}
+  .etq-label svg{width:100%;height:auto;display:block;}
+  .etq-hist{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin-bottom:8px;display:flex;flex-direction:column;gap:4px;}
+  .etq-hist-head{display:flex;justify-content:space-between;align-items:center;gap:8px;}
+  .etq-hist-btns{display:flex;gap:8px;margin-top:4px;}
+  .etq-hist-btns .ghost{min-height:40px;}
+  dialog#etqDialog{border:none;border-radius:14px;padding:16px;max-width:480px;width:calc(100% - 32px);box-shadow:0 8px 30px rgba(0,0,0,.3);}
+  dialog#etqDialog::backdrop{background:rgba(0,0,0,.45);}
+  .etq-dlg-btns{display:flex;gap:8px;margin-top:10px;}
+  .etq-dlg-btns button{min-height:46px;flex:1;}
 </style>
 </head>
 <body>
@@ -195,6 +222,7 @@
   <button class="tab" data-tab="descarte">Descarte</button>
   <button class="tab" data-tab="compras">Lista de Compras</button>
   <button class="tab" data-tab="pcp">🏭 PCP</button>
+  <button class="tab" data-tab="etiquetas">🏷️ Etiquetas</button>
   <button class="tab" data-tab="historico">Histórico</button>
 </div>
 
@@ -371,6 +399,54 @@
   </section>
 
   <!-- HISTÓRICO -->
+  <!-- ETIQUETAS (50 x 30 mm) — lógica em etiquetas.js -->
+  <section id="tab-etiquetas" class="hidden">
+    <div class="etq-sub">
+      <button type="button" class="active" data-sub="imprimir">Imprimir</button>
+      <button type="button" data-sub="historico">Histórico</button>
+      <button type="button" class="admin-only" data-sub="validades" id="etqSubValidades">Validades</button>
+    </div>
+
+    <div id="etq-imprimir">
+      <p class="hint-top">Escolha o prep, confira fabricação e lote e emita. A validade é calculada pelo sistema conforme a regra definida pelo admin.</p>
+      <input type="text" id="etqBusca" placeholder="Buscar prep..." style="width:100%;max-width:420px;">
+      <div id="etqPreps" class="etq-preps"></div>
+      <div id="etqForm" class="hidden">
+        <h3 class="viz-cat-title" id="etqSelNome"></h3>
+        <p class="auth-error hidden" id="etqSemValidade"></p>
+        <div class="etq-form">
+          <div class="etq-box">
+            <label class="etq-field">Fabricação (horário de Brasília)<input type="datetime-local" id="etqFab"></label>
+            <label class="etq-field">Lote (deixe vazio para gerar automático)<input type="text" id="etqLote" maxlength="40" placeholder="ex: 261110-01" autocomplete="off"></label>
+            <div class="etq-field">Cópias
+              <div class="etq-step"><button type="button" class="step-btn" id="etqMenos" aria-label="Menos uma cópia">−</button><span id="etqCopias">1</span><button type="button" class="step-btn" id="etqMais" aria-label="Mais uma cópia">+</button></div>
+            </div>
+            <button type="button" class="primary" id="etqEmitirBtn">🏷️ Emitir etiqueta</button>
+            <p class="auth-error" id="etqErro"></p>
+          </div>
+          <div>
+            <div class="muted" style="margin-bottom:4px;">Prévia (50 × 30 mm)</div>
+            <div class="etq-label" id="etqPreview"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="etq-historico" class="hidden">
+      <input type="text" id="etqHistBusca" placeholder="Buscar por prep ou lote..." style="width:100%;max-width:420px;margin-bottom:12px;">
+      <div id="etqHistLista"></div>
+    </div>
+
+    <div id="etq-validades" class="hidden admin-only">
+      <p class="hint-top">Defina por quanto tempo cada prep dura depois de fabricado. Prep novo (cadastrado na aba PCP) aparece aqui como pendente e só pode ser etiquetado depois que você definir a validade.</p>
+      <button type="button" class="ghost" id="etqNovoPrep" style="margin-bottom:12px;">➕ Novo prep (abre a aba PCP)</button>
+      <table>
+        <thead><tr><th>Prep</th><th>Como conta a validade</th><th>Duração</th><th>Ativa</th><th></th></tr></thead>
+        <tbody id="etqValBody"></tbody>
+      </table>
+    </div>
+  </section>
+
   <section id="tab-historico" class="hidden">
     <p class="hint-top">Registro de todas as alterações no estoque e nas contagens, com usuário e data/hora — para conferência.</p>
     <div class="toolbar" id="toolbarHistorico">
@@ -386,6 +462,15 @@
 </main>
 
 </div>
+
+<dialog id="etqDialog">
+  <div class="etq-label" id="etqDialogLabel"></div>
+  <p class="muted" id="etqDialogInfo"></p>
+  <div class="etq-dlg-btns">
+    <button type="button" class="primary" id="etqDialogBaixar">⬇️ Baixar imagem (PNG)</button>
+    <button type="button" class="ghost" id="etqDialogFechar">Fechar</button>
+  </div>
+</dialog>
 
 <script>
 const SUPABASE_URL = "https://cfyfvmeggspahovblitr.supabase.co";
@@ -1538,6 +1623,7 @@ document.querySelectorAll('.tab').forEach(tab=>{
     if(tab.dataset.tab === 'historico'){ loadHistorico(); }
     if(tab.dataset.tab === 'descarte'){ loadDescartesRecentes(); }
     if(tab.dataset.tab === 'pcp'){ loadPreps(); }
+    if(tab.dataset.tab === 'etiquetas' && window.loadEtiquetas){ loadEtiquetas(); }
     requestAnimationFrame(updateStickyOffsets);
   });
 });
@@ -1671,5 +1757,6 @@ db.auth.onAuthStateChange((event)=>{
   }
 })();
 </script>
+<script src="etiquetas.js?v=1"></script>
 </body>
 </html>
