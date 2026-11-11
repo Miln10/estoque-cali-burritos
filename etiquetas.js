@@ -96,6 +96,23 @@ function svgToPng(svg, scale = 2){
     img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
   });
 }
+// B1 (203 dpi): cabeça de impressão de 384 px. A etiqueta 400x240 é reduzida uniformemente (0,96) e centralizada.
+const NIIM_MODEL = { name_prefixes:['B1'], task:'b1', density:3, label_type:1, speed:1 };
+const NIIM_SIZE = { w_px:384, h_px:240, offset_y_px:4, dpi:203 };
+function svgToB1Blob(svg){
+  return new Promise((res, rej) => {
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement('canvas'); c.width = 384; c.height = 240;
+      const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, 384, 240);
+      const k = 384 / 400, h = 240 * k;
+      x.drawImage(img, 0, (240 - h) / 2, 384, h);
+      c.toBlob(b => b ? res(b) : rej(new Error('Falha ao gerar a imagem')), 'image/png');
+    };
+    img.onerror = () => rej(new Error('Falha ao gerar a imagem'));
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+  });
+}
 async function baixarPng(svg, nome){
   try{
     const blob = await svgToPng(svg);
@@ -179,20 +196,109 @@ async function emitir(){
   const l = data.lote;
   E.reqId = uuid();
   toast(data.repetido ? 'Etiqueta já emitida (sem duplicar).' : 'Etiqueta emitida: lote ' + l.lote);
-  abrirDialog(l, l.copias);
+  abrirDialog(l, l.copias, data.impressao_id);
   $('etqLote').value = '';
   carregarHistorico();
 }
 
 // ---------- diálogo com a etiqueta final (sempre desenhada a partir do que o servidor gravou) ----------
-function abrirDialog(l, copias){
+function abrirDialog(l, copias, impId){
   const out = buildLabel({ nome:l.prep_nome, fab:new Date(l.fabricado_em), val:new Date(l.validade_em), lote:l.lote });
   if(out.erro){ toast(out.erro, false); return; }
-  E.dlg = { svg:out.svg, l };
+  E.dlg = { svg:out.svg, l, copias, impId:impId || null, used:false, busy:false };
   $('etqDialogLabel').innerHTML = out.svg;
-  $('etqDialogInfo').textContent = `${copias} cópia(s) registrada(s). O arquivo gerado não confirma que saiu no papel.`;
+  $('etqDialogInfo').textContent = `${copias} cópia(s) registrada(s). Gerar o arquivo ou enviar à impressora não confirma que saiu no papel.`;
+  $('etqConfirm').classList.add('hidden');
+  const b = $('etqPrintBtn');
+  b.disabled = false; b.textContent = '🖨️ Imprimir na Niimbot B1';
+  setPrintStatus(impId ? '' : 'Ao imprimir, será registrada uma nova impressão deste lote.');
   const d = $('etqDialog');
   if(d.showModal) d.showModal(); else d.setAttribute('open', '');
+}
+function setPrintStatus(t, erro){ const e = $('etqPrintStatus'); e.textContent = t; e.style.color = erro ? 'var(--bad)' : ''; }
+async function registrar(impId, situacao, obs){
+  const { error } = await db.rpc('registrar_resultado_impressao', { p_impressao_id:impId, p_situacao:situacao, p_transporte:'bluetooth', p_observacao:obs || null });
+  if(error) toast('Não consegui registrar o resultado: ' + error.message, false);
+  return !error;
+}
+// Impressão direta pelo navegador (Web Bluetooth). Nunca reenvia sozinho; cada tentativa é um registro.
+async function imprimirNiimbot(){
+  const d = E.dlg;
+  if(!d || d.busy) return;
+  if(!window.Niimbot || !Niimbot.isSupported()){
+    setPrintStatus('Este navegador não tem Bluetooth. No Android use o Chrome; no iPhone, o app Bluefy. Em HTTPS.', true); return;
+  }
+  d.busy = true; $('etqPrintBtn').disabled = true; $('etqConfirm').classList.add('hidden');
+  try{
+    if(d.used || !d.impId){ // nova tentativa = nova linha no histórico (nunca reusa a anterior)
+      const { data, error } = await db.rpc('reimprimir_etiqueta', { p_lote_id:d.l.id, p_motivo:d.used ? 'nova tentativa de envio à impressora' : 'impressão a partir do histórico', p_copias:d.copias });
+      if(error){ setPrintStatus(msgErro(error), true); return; }
+      d.impId = data.impressao_id;
+    }
+    setPrintStatus('Preparando a imagem…');
+    const url = URL.createObjectURL(await svgToB1Blob(d.svg));
+    try{
+      await Niimbot.printImage(url, { model:modeloNiim(), size:NIIM_SIZE, copies:d.copias, onProgress:s => setPrintStatus(typeof s === 'string' ? s : 'Imprimindo…') });
+    } finally { setTimeout(() => URL.revokeObjectURL(url), 4000); }
+    d.used = true;
+    await registrar(d.impId, 'enviada_ao_aparelho');
+    setPrintStatus('Enviada à impressora. Confira o papel e confirme abaixo.');
+    $('etqConfirm').classList.remove('hidden');
+    $('etqPrintBtn').textContent = '🖨️ Imprimir de novo';
+  }catch(e){
+    const m = (e && e.message) || String(e);
+    if((e && e.name === 'NotFoundError') || /cancel/i.test(m)){ setPrintStatus('Nenhuma impressora escolhida. Ligue a B1 e toque em imprimir de novo. Se ela não aparece na lista, use "Mostrar todos os dispositivos" na aba Imprimir.', true); }
+    else {
+      if(/disconnect|link dropped|not connected/i.test(m)) estadoImpressora(null);
+      d.used = true;
+      await registrar(d.impId, 'falha', m.slice(0, 300));
+      setPrintStatus('Falha ao imprimir: ' + m + ' — confira o papel; algumas etiquetas podem ter saído.', true);
+      $('etqPrintBtn').textContent = '🖨️ Tentar de novo';
+    }
+  } finally {
+    d.busy = false; $('etqPrintBtn').disabled = false; carregarHistorico();
+  }
+}
+// ---------- reconhecer a impressora (Web Bluetooth: Chrome/Edge no Windows e Android, em HTTPS) ----------
+function modeloNiim(){ return E.todos ? Object.assign({}, NIIM_MODEL, { name_prefixes:[] }) : NIIM_MODEL; }
+function estadoImpressora(info, msg, erro){
+  E.printer = info || null;
+  const el = $('etqPrinterState'); if(!el) return;
+  el.textContent = msg || (info ? `✅ ${info.label} conectada (${info.dpi} dpi)${info.deviceName ? ' · ' + info.deviceName : ''}` : '🖨️ Impressora: não conectada');
+  el.style.color = erro ? 'var(--bad)' : (info ? 'var(--ok)' : '');
+}
+async function conectarImpressora(todos){
+  if(E.conectando) return;
+  if(!window.Niimbot || !Niimbot.isSupported()){
+    estadoImpressora(null, 'Este navegador não tem Bluetooth. No Windows e no Android use Chrome ou Edge (em HTTPS); no iPhone, o app Bluefy.', true); return;
+  }
+  E.todos = !!todos; E.conectando = true;
+  $('etqConectarBtn').disabled = true; $('etqConectarTodos').disabled = true;
+  estadoImpressora(null, '🔎 Procurando a impressora… escolha-a na janela do navegador.');
+  try{
+    const p = await Niimbot.identify(modeloNiim());
+    if(!p || p.task !== 'b1' || p.dpi !== 203){
+      const nome = p && p.label ? p.label : 'modelo desconhecido';
+      try{ await Niimbot.disconnect(); }catch(_){}
+      estadoImpressora(null, `Reconhecida: ${nome}. Por enquanto o painel só imprime na Niimbot B1 (203 dpi).`, true);
+    } else estadoImpressora(p);
+  }catch(e){
+    const m = (e && e.message) || String(e);
+    if((e && e.name === 'NotFoundError') || /cancel/i.test(m)) estadoImpressora(null, 'Nenhuma impressora escolhida. Ligue a B1 (e feche o app da Niimbot) e tente de novo. Se ela não aparece na lista, toque em "Mostrar todos os dispositivos".', true);
+    else estadoImpressora(null, 'Não consegui conectar: ' + m, true);
+  } finally {
+    E.conectando = false; $('etqConectarBtn').disabled = false; $('etqConectarTodos').disabled = false;
+  }
+}
+async function confirmarPapel(ok){
+  const d = E.dlg; if(!d || !d.impId) return;
+  let obs = null;
+  if(!ok){ obs = (prompt('O que aconteceu? (opcional)') || '').trim() || 'não saiu ou saiu errado'; }
+  if(await registrar(d.impId, ok ? 'conferida' : 'falha', obs)){
+    $('etqConfirm').classList.add('hidden');
+    setPrintStatus(ok ? '✅ Impressão conferida no papel.' : 'Registrado como falha. Use "Imprimir de novo" se precisar.', !ok);
+    carregarHistorico();
+  }
 }
 
 // ---------- histórico ----------
@@ -234,7 +340,7 @@ async function reimprimir(l){
   const { data, error } = await db.rpc('reimprimir_etiqueta', { p_lote_id:l.id, p_motivo:motivo, p_copias:n });
   if(error){ toast(msgErro(error), false); return; }
   toast('Reimpressão registrada.');
-  abrirDialog(data.lote, n);
+  abrirDialog(data.lote, n, data.impressao_id);
   carregarHistorico();
 }
 
@@ -297,6 +403,11 @@ $('etqHistLista').addEventListener('click', e => {
   const l = E.lotes.find(x => x.id === b.dataset.id); if(!l) return;
   if(b.dataset.act === 'ver') abrirDialog(l, l.copias); else reimprimir(l);
 });
+$('etqConectarBtn').addEventListener('click', () => conectarImpressora(false));
+$('etqConectarTodos').addEventListener('click', () => conectarImpressora(true));
+$('etqPrintBtn').addEventListener('click', imprimirNiimbot);
+$('etqOk').addEventListener('click', () => confirmarPapel(true));
+$('etqFail').addEventListener('click', () => confirmarPapel(false));
 $('etqDialogBaixar').addEventListener('click', () => { if(E.dlg) baixarPng(E.dlg.svg, `etiqueta-${E.dlg.l.prep_nome}-${E.dlg.l.lote}`); });
 $('etqDialogFechar').addEventListener('click', () => { const d = $('etqDialog'); if(d.close) d.close(); else d.removeAttribute('open'); });
 const nv = $('etqNovoPrep'); if(nv) nv.addEventListener('click', () => document.querySelector('.tab[data-tab="pcp"]').click());

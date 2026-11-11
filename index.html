@@ -160,6 +160,9 @@
   .etq-hist-btns .ghost{min-height:40px;}
   dialog#etqDialog{border:none;border-radius:14px;padding:16px;max-width:480px;width:calc(100% - 32px);box-shadow:0 8px 30px rgba(0,0,0,.3);}
   dialog#etqDialog::backdrop{background:rgba(0,0,0,.45);}
+  .etq-printer{display:flex;flex-direction:column;gap:6px;align-items:flex-start;background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:14px;}
+  .etq-printer #etqPrinterState{font-weight:700;font-size:14px;}
+  .etq-printer button.primary{min-height:44px;}
   .etq-dlg-btns{display:flex;gap:8px;margin-top:10px;}
   .etq-dlg-btns button{min-height:46px;flex:1;}
 </style>
@@ -408,6 +411,12 @@
     </div>
 
     <div id="etq-imprimir">
+      <div class="etq-printer">
+        <span id="etqPrinterState">🖨️ Impressora: não conectada</span>
+        <button type="button" class="primary" id="etqConectarBtn">🔌 Conectar impressora</button>
+        <button type="button" class="link-btn" id="etqConectarTodos">Não aparece? Mostrar todos os dispositivos</button>
+        <span class="muted">Ligue a B1, deixe o Bluetooth ligado (no Android, a localização também) e feche o app da Niimbot. Funciona no Chrome ou Edge.</span>
+      </div>
       <p class="hint-top">Escolha o prep, confira fabricação e lote e emita. A validade é calculada pelo sistema conforme a regra definida pelo admin.</p>
       <input type="text" id="etqBusca" placeholder="Buscar prep..." style="width:100%;max-width:420px;">
       <div id="etqPreps" class="etq-preps"></div>
@@ -466,8 +475,14 @@
 <dialog id="etqDialog">
   <div class="etq-label" id="etqDialogLabel"></div>
   <p class="muted" id="etqDialogInfo"></p>
+  <button type="button" class="primary" id="etqPrintBtn" style="width:100%;min-height:50px;font-size:15px;">🖨️ Imprimir na Niimbot B1</button>
+  <p class="muted" id="etqPrintStatus" style="min-height:16px;"></p>
+  <div class="etq-dlg-btns hidden" id="etqConfirm">
+    <button type="button" class="primary" id="etqOk">✅ Saiu certo no papel</button>
+    <button type="button" class="ghost" id="etqFail">❌ Não saiu / errado</button>
+  </div>
   <div class="etq-dlg-btns">
-    <button type="button" class="primary" id="etqDialogBaixar">⬇️ Baixar imagem (PNG)</button>
+    <button type="button" class="ghost" id="etqDialogBaixar">⬇️ Baixar imagem (PNG)</button>
     <button type="button" class="ghost" id="etqDialogFechar">Fechar</button>
   </div>
 </dialog>
@@ -1757,6 +1772,7 @@ db.auth.onAuthStateChange((event)=>{
   }
 })();
 </script>
-<script src="etiquetas.js?v=1"></script>
+<script src="niimbot.js?v=2.6.0"></script>
+<script src="etiquetas.js?v=2"></script>
 </body>
 </html>
