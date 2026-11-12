@@ -154,6 +154,7 @@ async function carregar(){
   E.regras = {}; (r.data || []).forEach(x => E.regras[x.prep_id] = x);
   E.carregado = true;
   renderLista();
+  if(!E.sel) preview();
   if(currentRole === 'admin') renderValidades();
   if(E.sel){ const s = E.preps.find(x => x.id === E.sel.id); if(s) selecionar(s, true); else limparSel(); }
   carregarHistorico();
@@ -178,7 +179,11 @@ function renderCubaSelect(){
     '<option value="sem">Sem cuba (o peso já é líquido)</option>';
   if([...s.options].some(o => o.value === atual)) s.value = atual;
 }
-function limparSel(){ E.sel = null; $('etqForm').classList.add('hidden'); renderLista(); }
+function mostrarEscolha(aberta){
+  $('etqEscolha').classList.toggle('hidden', !aberta);
+  $('etqSelBar').classList.toggle('hidden', aberta);
+}
+function limparSel(){ E.sel = null; $('etqForm').classList.add('hidden'); mostrarEscolha(true); renderLista(); preview(); }
 function selecionar(p, manter){
   E.sel = p;
   if(!manter){ E.reqId = uuid(); E.copias = 1; $('etqFab').value = toInputSP(new Date()); $('etqLote').value = ''; $('etqCopias').textContent = '1'; $('etqPeso').value = ''; $('etqCuba').value = ''; }
@@ -191,12 +196,18 @@ function selecionar(p, manter){
   $('etqErro').textContent = '';
   renderLista();
   preview();
+  // No celular a lista de preps é longa: recolhe a escolha e leva a etiqueta montada para a vista.
+  mostrarEscolha(false);
+  if(!manter){ // desconta o cabeçalho e as abas fixos (mais altos no celular)
+    const fixo = document.querySelector('.tabs').getBoundingClientRect().bottom;
+    window.scrollBy({ top:$('etqPreviewWrap').getBoundingClientRect().top - fixo - 8, behavior:'smooth' });
+  }
 }
 function preview(){
   const box = $('etqPreview');
-  if(!E.sel){ box.innerHTML = ''; return; }
+  if(!E.sel){ box.innerHTML = '<p class="etq-vazia">Toque num prep abaixo para ver a etiqueta aqui.</p>'; return; }
   const r = E.regras[E.sel.id], fab = fromInputSP($('etqFab').value);
-  if(!pronto(r)){ box.innerHTML = '<p class="muted" style="padding:10px;">Sem prévia: validade não definida.</p>'; return; }
+  if(!pronto(r)){ box.innerHTML = `<p class="etq-vazia"><strong>${esc(E.sel.nome)}</strong><br>Sem etiqueta: validade não definida.</p>`; return; }
   if(isNaN(fab)){ box.innerHTML = '<p class="muted" style="padding:10px;">Informe a data e hora de fabricação.</p>'; return; }
   const ps = pesoAtual(), conta = $('etqPesoConta');
   conta.textContent = ps.erro ? ($('etqPeso').value.trim() || $('etqCuba').value ? ps.erro : '') : `${fmtKg(ps.bruto)} − ${fmtKg(ps.tara)} (cuba) = ${fmtKg(ps.liq)} líquido`;
@@ -298,6 +309,8 @@ function estadoImpressora(info, msg, erro){
   const el = $('etqPrinterState'); if(!el) return;
   el.textContent = msg || (info ? `✅ ${info.label} conectada (${info.dpi} dpi)${info.deviceName ? ' · ' + info.deviceName : ''}` : '🖨️ Impressora: não conectada');
   el.style.color = erro ? 'var(--bad)' : (info ? 'var(--ok)' : '');
+  $('etqPrinterBox').classList.toggle('conectada', !!info);
+  $('etqConectarBtn').textContent = info ? 'Trocar impressora' : '🔌 Conectar impressora';
 }
 async function conectarImpressora(todos){
   if(E.conectando) return;
@@ -456,6 +469,7 @@ function subtab(nome){
 }
 document.querySelectorAll('.etq-sub button').forEach(b => b.addEventListener('click', () => subtab(b.dataset.sub)));
 $('etqBusca').addEventListener('input', renderLista);
+$('etqTrocarPrep').addEventListener('click', limparSel);
 $('etqPreps').addEventListener('click', e => { const b = e.target.closest('.etq-prep'); if(!b) return; const p = E.preps.find(x => x.id === b.dataset.id); if(p) selecionar(p); });
 $('etqFab').addEventListener('input', mudouCampo);
 $('etqLote').addEventListener('input', mudouCampo);

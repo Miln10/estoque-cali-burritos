@@ -144,8 +144,12 @@
   .etq-prep{min-height:64px;text-align:left;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;cursor:pointer;display:flex;flex-direction:column;gap:3px;font-size:14px;}
   .etq-prep.sem{opacity:.65;}
   .etq-prep.sel{border-color:var(--orange);outline:2px solid var(--orange);}
-  .etq-form{display:grid;grid-template-columns:minmax(260px,1fr) minmax(260px,1fr);gap:18px;align-items:start;}
-  @media(max-width:720px){.etq-form{grid-template-columns:1fr;}}
+  .etq-form{max-width:520px;}
+  .etq-topo{margin-bottom:10px;}
+  .etq-topo .etq-label{max-width:360px;}
+  .etq-vazia{padding:22px 12px;text-align:center;color:var(--gray);font-size:13.5px;}
+  .etq-selbar{display:flex;justify-content:space-between;align-items:center;gap:10px;background:#fff;border:2px solid var(--orange);border-radius:10px;padding:8px 12px;margin-bottom:12px;max-width:520px;font-size:15px;}
+  .etq-selbar .ghost{min-height:40px;white-space:nowrap;}
   .etq-box{background:#fff;border:1px solid var(--line);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:12px;}
   .etq-field{display:flex;flex-direction:column;gap:4px;font-size:13px;}
   .etq-field input{padding:10px;border:1px solid var(--line);border-radius:8px;font-size:15px;width:100%;}
@@ -160,9 +164,14 @@
   .etq-hist-btns .ghost{min-height:40px;}
   dialog#etqDialog{border:none;border-radius:14px;padding:16px;max-width:480px;width:calc(100% - 32px);box-shadow:0 8px 30px rgba(0,0,0,.3);}
   dialog#etqDialog::backdrop{background:rgba(0,0,0,.45);}
-  .etq-printer{display:flex;flex-direction:column;gap:6px;align-items:flex-start;background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:14px;}
+  .etq-printer{background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin-bottom:12px;}
+  .etq-printer-row{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;}
   .etq-printer #etqPrinterState{font-weight:700;font-size:14px;}
-  .etq-printer button.primary{min-height:44px;}
+  .etq-printer button.primary{min-height:40px;padding:6px 12px;}
+  .etq-printer-ajuda{display:flex;flex-direction:column;align-items:flex-start;gap:2px;margin-top:6px;}
+  .etq-printer.conectada{border-color:var(--ok);}
+  .etq-printer.conectada .etq-printer-ajuda{display:none;}
+  .etq-printer.conectada button.primary{background:#fff;color:var(--ink);border:1px solid var(--line);}
   .etq-dlg-btns{display:flex;gap:8px;margin-top:10px;}
   .etq-dlg-btns button{min-height:46px;flex:1;}
 </style>
@@ -412,17 +421,32 @@
     </div>
 
     <div id="etq-imprimir">
-      <div class="etq-printer">
-        <span id="etqPrinterState">🖨️ Impressora: não conectada</span>
-        <button type="button" class="primary" id="etqConectarBtn">🔌 Conectar impressora</button>
-        <button type="button" class="link-btn" id="etqConectarTodos">Não aparece? Mostrar todos os dispositivos</button>
-        <span class="muted">Ligue a B1, deixe o Bluetooth ligado (no Android, a localização também) e feche o app da Niimbot. Funciona no Chrome ou Edge.</span>
+      <div class="etq-printer" id="etqPrinterBox">
+        <div class="etq-printer-row">
+          <span id="etqPrinterState">🖨️ Impressora: não conectada</span>
+          <button type="button" class="primary" id="etqConectarBtn">🔌 Conectar impressora</button>
+        </div>
+        <div class="etq-printer-ajuda">
+          <span class="muted">Ligue a B1, deixe o Bluetooth ligado (no Android, a localização também) e feche o app da Niimbot. Funciona no Chrome ou Edge.</span>
+          <button type="button" class="link-btn" id="etqConectarTodos">Não aparece? Mostrar todos os dispositivos</button>
+        </div>
       </div>
-      <p class="hint-top">Escolha o prep, confira fabricação e lote e emita. A validade é calculada pelo sistema conforme a regra definida pelo admin.</p>
-      <input type="text" id="etqBusca" placeholder="Buscar prep..." style="width:100%;max-width:420px;">
-      <div id="etqPreps" class="etq-preps"></div>
+
+      <div id="etqPreviewWrap" class="etq-topo">
+        <div class="muted" style="margin-bottom:4px;">Etiqueta (50 × 30 mm)</div>
+        <div class="etq-label" id="etqPreview"></div>
+      </div>
+
+      <div id="etqSelBar" class="etq-selbar hidden">
+        <span>Prep: <strong id="etqSelNome"></strong></span>
+        <button type="button" class="ghost" id="etqTrocarPrep">↩ Trocar prep</button>
+      </div>
+      <div id="etqEscolha">
+        <p class="hint-top" style="margin-top:10px;">Toque no prep para montar a etiqueta acima.</p>
+        <input type="text" id="etqBusca" placeholder="Buscar prep..." style="width:100%;max-width:420px;">
+        <div id="etqPreps" class="etq-preps"></div>
+      </div>
       <div id="etqForm" class="hidden">
-        <h3 class="viz-cat-title" id="etqSelNome"></h3>
         <p class="auth-error hidden" id="etqSemValidade"></p>
         <div class="etq-form">
           <div class="etq-box">
@@ -436,10 +460,6 @@
             </div>
             <button type="button" class="primary" id="etqEmitirBtn">🏷️ Emitir etiqueta</button>
             <p class="auth-error" id="etqErro"></p>
-          </div>
-          <div>
-            <div class="muted" style="margin-bottom:4px;">Prévia (50 × 30 mm)</div>
-            <div class="etq-label" id="etqPreview"></div>
           </div>
         </div>
       </div>
@@ -1790,6 +1810,6 @@ db.auth.onAuthStateChange((event)=>{
 })();
 </script>
 <script src="niimbot.js?v=2.6.0"></script>
-<script src="etiquetas.js?v=3"></script>
+<script src="etiquetas.js?v=4"></script>
 </body>
 </html>
