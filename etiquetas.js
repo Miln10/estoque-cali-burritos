@@ -37,12 +37,28 @@ function uuid(){
   return `${h.slice(0,8)}-${h.slice(8,12)}-${h.slice(12,16)}-${h.slice(16,20)}-${h.slice(20)}`;
 }
 const fmtKg = g => (Number(g) / 1000).toFixed(3).replace('.', ',') + ' kg';
-function parseKg(v){ const t = String(v ?? '').trim(); if(!/^\d{1,3}([.,]\d{1,3})?$/.test(t)) return NaN; return Math.round(parseFloat(t.replace(',', '.')) * 1000); }
+function parseKg(v){ const t = String(v ?? '').trim(); if(!/^\d{1,6}([.,]\d{1,3})?$/.test(t)) return NaN; return Math.round(parseFloat(t.replace(',', '.')) * 1000); }
+// Acima do limite o sistema pergunta por extenso (vírgula esquecida: 5800 em vez de 5,800). Máximo = o do servidor.
+const PESO_LIMITE_G = 30000, PESO_MAX_G = 200000, TARA_LIMITE_G = 5000, TARA_MAX_G = 50000;
+const kgCampo = g => (g / 1000).toFixed(3).replace('.', ',');
+// Pergunta sobre o peso suspeito e aplica a resposta no campo. true = pode seguir.
+async function conferirPeso(){
+  const ps = pesoAtual();
+  if(!ps.suspeito || E.conferindo) return !ps.suspeito;
+  E.conferindo = true;
+  const v = await ValorExtenso.conferir(ps.bruto, { campo:'Peso na balança', unidade:'kg', limite:PESO_LIMITE_G, maximo:PESO_MAX_G });
+  E.conferindo = false;
+  if(v == null){ $('etqPeso').focus(); $('etqPeso').select(); return false; }
+  if(v !== ps.bruto) $('etqPeso').value = kgCampo(v);
+  E.pesoOk = v; E.reqId = uuid(); preview();
+  return true;
+}
 // Lê peso + cuba do formulário. A conta oficial é refeita no servidor.
 function pesoAtual(){
   const bruto = parseKg($('etqPeso').value), sel = $('etqCuba').value;
   if(!$('etqPeso').value.trim()) return { erro:'Informe o peso que a balança mostrou.' };
   if(isNaN(bruto) || bruto <= 0) return { erro:'Peso inválido. Digite em kg, por exemplo 5,800.' };
+  if(bruto > PESO_LIMITE_G && E.pesoOk !== bruto) return { erro:`Peso muito alto (${ValorExtenso.fmt(bruto, 'kg')}). Confira se faltou a vírgula.`, suspeito:true, bruto };
   if(!sel) return { erro:'Escolha a cuba usada (ou "Sem cuba").' };
   let tara = 0, cubaId = null;
   if(sel !== 'sem'){ const c = E.cubas.find(x => x.id === sel); if(!c) return { erro:'Cuba não encontrada. Recarregue a página.' }; tara = Math.round(Number(c.tara_g)); cubaId = c.id; }
@@ -220,6 +236,7 @@ async function emitir(){
   if(!pronto(r)){ err.textContent = 'Validade não definida para este prep.'; return; }
   const fab = fromInputSP($('etqFab').value);
   if(isNaN(fab)){ err.textContent = 'Informe a data e hora de fabricação.'; return; }
+  if(!(await conferirPeso())) return;
   const ps = pesoAtual();
   if(ps.erro){ err.textContent = ps.erro; return; }
   const previa = buildLabel({ nome:E.sel.nome, fab, val:calcValidade(r.modo, r.duracao, fab), lote:$('etqLote').value.trim() || 'automático', pesoG:ps.liq });
@@ -434,21 +451,24 @@ function renderCubas(){
       <td><button type="button" class="primary c-salvar">Salvar</button></td></tr>`).join('')
     : '<tr><td colspan="4" class="muted">Nenhuma cuba cadastrada. Pese a cuba vazia e cadastre acima.</td></tr>';
 }
-function lerCuba(nomeEl, taraEl){
-  const nome = nomeEl.value.trim(), tara = parseKg(taraEl.value);
+async function lerCuba(nomeEl, taraEl){
+  const nome = nomeEl.value.trim(); let tara = parseKg(taraEl.value);
   if(!nome){ toast('Informe o nome da cuba.', false); return null; }
-  if(isNaN(tara) || tara <= 0 || tara > 50000){ toast('Tara inválida. Digite em kg, por exemplo 1,250.', false); return null; }
+  if(isNaN(tara) || tara <= 0){ toast('Tara inválida. Digite em kg, por exemplo 1,250.', false); return null; }
+  const v = await ValorExtenso.conferir(tara, { campo:'Tara da cuba', unidade:'kg', limite:TARA_LIMITE_G, maximo:TARA_MAX_G });
+  if(v == null){ taraEl.focus(); return null; }
+  if(v !== tara){ tara = v; taraEl.value = kgCampo(v); }
   return { nome, tara_g:tara };
 }
 async function novaCuba(){
-  const v = lerCuba($('etqCubaNome'), $('etqCubaTara')); if(!v) return;
+  const v = await lerCuba($('etqCubaNome'), $('etqCubaTara')); if(!v) return;
   const { error } = await db.from('cubas').insert(v);
   if(error){ toast(error.code === '23505' ? 'Já existe uma cuba com esse nome.' : 'Erro ao salvar: ' + error.message, false); return; }
   $('etqCubaNome').value = ''; $('etqCubaTara').value = '';
   toast('Cuba cadastrada.'); carregar();
 }
 async function salvarCuba(tr){
-  const v = lerCuba(tr.querySelector('.c-nome'), tr.querySelector('.c-tara')); if(!v) return;
+  const v = await lerCuba(tr.querySelector('.c-nome'), tr.querySelector('.c-tara')); if(!v) return;
   v.ativa = tr.querySelector('.c-ativa').checked; v.atualizado_por = currentUser.id; v.updated_at = new Date().toISOString();
   const { data, error } = await db.from('cubas').update(v).eq('id', tr.dataset.id).select('id');
   if(error){ toast(error.code === '23505' ? 'Já existe uma cuba com esse nome.' : 'Erro ao salvar: ' + error.message, false); return; }
@@ -469,6 +489,7 @@ $('etqPreps').addEventListener('click', e => { const b = e.target.closest('.etq-
 $('etqFab').addEventListener('input', mudouCampo);
 $('etqLote').addEventListener('input', mudouCampo);
 $('etqPeso').addEventListener('input', mudouCampo);
+$('etqPeso').addEventListener('change', conferirPeso);
 $('etqCuba').addEventListener('change', mudouCampo);
 $('etqCubaAdd') && $('etqCubaAdd').addEventListener('click', novaCuba);
 $('etqCubasBody') && $('etqCubasBody').addEventListener('click', e => { const b = e.target.closest('.c-salvar'); if(b) salvarCuba(b.closest('tr')); });

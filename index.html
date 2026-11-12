@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>📦 Estoque — Cali Burritos</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="valor-extenso.js?v=1"></script>
 <style>
   :root{
     --orange:#e85d27; --orange-dark:#c94814; --cream:#fff8f2; --ink:#2b1d16;
@@ -532,6 +533,14 @@ let pcpLoaded = false;
 let ultimaEdicaoPorInsumo = {};
 let ultimaEdicaoGlobal = null;
 const RENDIMENTO_UNIDADES = ['un','kg','g','l','ml','pacote','rolo','maço','par'];
+
+// Pergunta por extenso quando um peso/volume parece absurdo (vírgula esquecida). Devolve o valor aceito ou null.
+async function conferirQtdAlta(qtd, unidade, campo){
+  const u = (unidade||'').toLowerCase();
+  if(!window.ValorExtenso || (u!=='kg' && u!=='l')) return qtd;
+  const v = await ValorExtenso.conferir(qtd*1000, { campo, unidade:u, limite:60000 });
+  return v==null ? null : v/1000;
+}
 
 function toast(msg, ok=true){
   const t = document.getElementById('toast');
@@ -1369,8 +1378,11 @@ function renderPcpBoard(){
     card.querySelector('.pcp-produzir-btn').addEventListener('click', async (e)=>{
       const btn = e.target;
       const qtdInp = card.querySelector('.pcp-produzir-qtd');
-      const qtd = parseFloat(qtdInp.value);
+      let qtd = parseFloat(qtdInp.value);
       if(!qtd || qtd<=0){ toast('Informe uma quantidade válida pra produzir', false); return; }
+      qtd = await conferirQtdAlta(qtd, item.rendimento_unidade, 'Quantidade produzida de ' + item.nome);
+      if(qtd==null){ qtdInp.focus(); return; }
+      qtdInp.value = qtd;
       btn.disabled = true;
       const { error } = await db.rpc('registrar_producao', { p_prep_id: item.id, p_quantidade: qtd, p_observacao: null });
       btn.disabled = false;
@@ -1529,12 +1541,15 @@ document.getElementById('novoPrepBtn').addEventListener('click', async ()=>{
   const errEl = document.getElementById('novoPrepError');
   errEl.textContent = '';
   const nome = document.getElementById('novoPrepNome').value.trim();
-  const rendQtd = parseFloat(document.getElementById('novoPrepRendQtd').value);
+  let rendQtd = parseFloat(document.getElementById('novoPrepRendQtd').value);
   const rendUnidade = document.getElementById('novoPrepRendUnidade').value;
   const min = parseFloat(document.getElementById('novoPrepMin').value) || 0;
   const max = parseFloat(document.getElementById('novoPrepMax').value) || 0;
   if(!nome){ errEl.textContent = 'Informe o nome do prep.'; return; }
   if(!rendQtd || rendQtd<=0){ errEl.textContent = 'Informe o rendimento (quanto a receita produz de uma vez).'; return; }
+  rendQtd = await conferirQtdAlta(rendQtd, rendUnidade, 'Rendimento da receita');
+  if(rendQtd==null){ document.getElementById('novoPrepRendQtd').focus(); return; }
+  document.getElementById('novoPrepRendQtd').value = rendQtd;
   const { error } = await db.from('preps').insert({
     nome, rendimento_quantidade: rendQtd, rendimento_unidade: rendUnidade,
     estoque_minimo: min, estoque_maximo: max
@@ -1804,6 +1819,6 @@ db.auth.onAuthStateChange((event)=>{
 })();
 </script>
 <script src="niimbot.js?v=2.6.0"></script>
-<script src="etiquetas.js?v=5"></script>
+<script src="etiquetas.js?v=6"></script>
 </body>
 </html>
