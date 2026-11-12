@@ -113,17 +113,29 @@
   .pcp-card.b-bad{border-left-color:var(--bad);} .pcp-card.b-warn{border-left-color:var(--warn);}
   .pcp-card.b-ok{border-left-color:var(--ok);} .pcp-card.b-none{border-left-color:#b9b0a6;}
   .pcp-card-head{display:flex;justify-content:space-between;align-items:center;gap:8px;}
-  .pcp-card-head strong{font-size:13.5px;}
-  .pcp-card-row{display:flex;justify-content:space-between;font-size:12.5px;}
-  .pcp-atual{font-weight:700;}
-  .pcp-count-steppers{justify-content:center;align-items:center;}
-  .pcp-sugestao{background:#fff7e6;border-radius:6px;padding:6px 8px;font-size:12.5px;text-align:center;}
-  .pcp-sugestao strong{color:var(--orange-dark);}
-  .pcp-ajuste-toggle summary{font-size:11.5px;color:var(--gray);cursor:pointer;}
-  .pcp-ajuste-toggle input{width:100%;margin-top:4px;}
-  .pcp-produzir-row{display:flex;gap:6px;align-items:center;}
-  .pcp-produzir-row input{width:70px;}
-  .pcp-produzir-row button{flex:1;font-size:12px;padding:8px 6px;}
+  .pcp-card-head strong{font-size:15px;}
+  .pcp-card-row{display:flex;justify-content:space-between;align-items:center;font-size:12.5px;}
+  .pcp-atual{font-weight:800;font-size:17px;min-width:76px;text-align:center;}
+  .pcp-count-steppers{justify-content:space-between;align-items:center;background:#faf5ee;border-radius:8px;padding:6px 8px;}
+  .pcp-count-steppers .step-btn{width:42px;height:42px;font-size:22px;}
+  .pcp-count-label{font-size:11px;color:var(--gray);text-align:center;margin-bottom:-2px;}
+  .pcp-sugestao{background:#fff7e6;border-radius:6px;padding:8px;font-size:13px;text-align:center;}
+  .pcp-sugestao strong{color:var(--orange-dark);font-size:17px;}
+  .pcp-sugestao.zero{background:#eafaf0;} .pcp-sugestao.zero strong{color:var(--ok);font-size:14px;}
+  .pcp-ajuste-toggle summary{font-size:12px;color:var(--gray);cursor:pointer;padding:6px 0;}
+  .pcp-ajuste-toggle input{width:100%;margin-top:4px;padding:9px;}
+  .pcp-produzir-row{display:flex;gap:8px;align-items:stretch;}
+  .pcp-produzir-row input{width:84px;font-size:15px;padding:9px 6px;}
+  .pcp-produzir-row button{flex:1;font-size:14px;padding:8px 6px;min-height:44px;}
+  .pcp-filtros{display:flex;gap:6px;flex-wrap:wrap;}
+  .pcp-filtros button{min-height:38px;padding:6px 12px;border-radius:20px;border:1px solid var(--line);background:#fff;font-size:13px;font-weight:600;cursor:pointer;}
+  .pcp-filtros button.active{background:var(--ink);color:#fff;border-color:var(--ink);}
+  .pcp-admin{background:#fff;border:1px solid var(--line);border-radius:10px;padding:4px 14px;margin-bottom:10px;}
+  .pcp-admin summary{cursor:pointer;font-weight:700;color:var(--orange-dark);font-size:14px;padding:10px 0;}
+  .pcp-admin[open]{padding-bottom:14px;}
+  .pcp-admin .descarte-form{border:none;padding:0;}
+  .pcp-admin table{box-shadow:none;}
+  @media(max-width:600px){ #toolbarPcp input{width:100%;} .pcp-admin{overflow-x:auto;} }
   .receita-lista{display:flex;flex-direction:column;gap:6px;}
 
   .descarte-form{background:#fff;border:1px solid var(--line);border-radius:10px;padding:16px;max-width:420px;display:flex;flex-direction:column;gap:10px;}
@@ -374,10 +386,18 @@
 
   <!-- PCP -->
   <section id="tab-pcp" class="hidden">
-    <p class="hint-top">Quanto produzir hoje é calculado sozinho (máximo − estoque atual, + ajuste opcional). Conte o estoque de cada prep com os botões − e + — igual à contagem de insumos.</p>
+    <div class="toolbar" id="toolbarPcp">
+      <input type="text" id="searchBoxPcp" placeholder="Buscar prep...">
+      <div class="pcp-filtros" id="pcpFiltros"></div>
+    </div>
+    <div id="pcpContainer" class="pcp-grid"></div>
 
-    <div class="admin-only">
-      <h3 class="viz-cat-title">Cadastrar novo prep</h3>
+    <h3 class="viz-cat-title" style="margin-top:22px;">Produções recentes</h3>
+    <div id="producoesRecentes"></div>
+
+    <div class="admin-only" style="margin-top:22px;">
+      <details class="pcp-admin">
+        <summary>➕ Cadastrar novo prep</summary>
       <div class="descarte-form" style="max-width:520px;">
         <input type="text" id="novoPrepNome" placeholder="Nome do prep (ex: molho de tomate)">
         <div class="descarte-row">
@@ -391,22 +411,15 @@
         <button class="primary" id="novoPrepBtn" type="button">➕ Cadastrar prep</button>
         <p class="auth-error" id="novoPrepError"></p>
       </div>
-
-      <h3 class="viz-cat-title" style="margin-top:22px;">Preps cadastrados — mínimo/máximo e receita</h3>
+      </details>
+      <details class="pcp-admin">
+        <summary>⚙️ Preps cadastrados — mínimo/máximo e receita</summary>
       <table>
         <thead><tr><th>Prep</th><th>Rendimento</th><th>Mínimo</th><th>Máximo</th><th>Atual</th><th>Receita</th></tr></thead>
         <tbody id="prepsAdminBody"></tbody>
       </table>
+      </details>
     </div>
-
-    <h3 class="viz-cat-title" style="margin-top:22px;">Painel do dia</h3>
-    <div class="toolbar" id="toolbarPcp">
-      <input type="text" id="searchBoxPcp" placeholder="Buscar prep...">
-    </div>
-    <div id="pcpContainer" class="pcp-grid"></div>
-
-    <h3 class="viz-cat-title" style="margin-top:22px;">Produções recentes</h3>
-    <div id="producoesRecentes"></div>
   </section>
 
   <!-- HISTÓRICO -->
@@ -531,6 +544,8 @@ let currentRole = null;
 let preps = [];
 let pcpAjustesHoje = {};
 let pcpLoaded = false;
+let pcpOrdem = {};
+let pcpFiltro = 'todos';
 let ultimaEdicaoPorInsumo = {};
 let ultimaEdicaoGlobal = null;
 const RENDIMENTO_UNIDADES = ['un','kg','g','l','ml','pacote','rolo','maço','par'];
@@ -1269,6 +1284,11 @@ async function loadPreps(){
   const { data, error } = await db.from('preps').select('*').order('nome');
   if(error){ toast('Erro ao carregar preps: ' + error.message, false); return; }
   preps = data || [];
+  // Ordem por urgência, fixada na carga: o card não muda de lugar enquanto a pessoa conta com − e +.
+  const peso = { 'b-bad':0, 'b-warn':1, 'b-ok':2, 'b-none':3 };
+  pcpOrdem = {};
+  preps.slice().sort((a,b)=> (peso[statusOf(a).cls]-peso[statusOf(b).cls]) || (a.nome||'').localeCompare(b.nome||''))
+    .forEach((p,i)=> pcpOrdem[p.id] = i);
   await loadPcpAjustesHoje();
   renderPcpBoard();
   if(currentRole==='admin') renderPrepsAdmin();
@@ -1294,10 +1314,18 @@ function renderPcpBoard(){
   const container = document.getElementById('pcpContainer');
   if(!container) return;
   const term = (document.getElementById('searchBoxPcp').value || '').toLowerCase();
-  const list = preps.filter(p=> !term || (p.nome||'').toLowerCase().includes(term));
+  const conta = { 'b-bad':0, 'b-warn':0 };
+  preps.forEach(p=>{ const c = statusOf(p).cls; if(c in conta) conta[c]++; });
+  const filtros = document.getElementById('pcpFiltros');
+  filtros.innerHTML = [['todos','Todos ('+preps.length+')'],['b-bad','🔴 Repor ('+conta['b-bad']+')'],['b-warn','🟡 Baixo ('+conta['b-warn']+')']]
+    .map(f=>`<button type="button" data-f="${f[0]}" class="${pcpFiltro===f[0]?'active':''}">${f[1]}</button>`).join('');
+  const list = preps.filter(p=> (!term || (p.nome||'').toLowerCase().includes(term)) && (pcpFiltro==='todos' || statusOf(p).cls===pcpFiltro))
+    .sort((a,b)=> (pcpOrdem[a.id] ?? 999) - (pcpOrdem[b.id] ?? 999));
   container.innerHTML = '';
   if(list.length===0){
-    container.innerHTML = '<p class="muted" style="text-align:center;padding:30px;">Nenhum prep cadastrado ainda' + (currentRole==='admin' ? ' — cadastre um acima.' : '.') + '</p>';
+    container.innerHTML = '<p class="muted" style="text-align:center;padding:30px;">' + (preps.length===0
+      ? 'Nenhum prep cadastrado ainda' + (currentRole==='admin' ? ' — cadastre em "Cadastrar novo prep", no fim desta página.' : '.')
+      : 'Nenhum prep neste filtro.') + '</p>';
     return;
   }
   list.forEach(item=>{
@@ -1311,22 +1339,22 @@ function renderPcpBoard(){
     card.className = 'pcp-card ' + s.cls;
     card.innerHTML = `
       <div class="pcp-card-head"><strong>${item.nome}</strong><span class="badge ${s.cls}">${s.label}</span></div>
-      <div class="pcp-card-row"><span class="muted">Estoque atual</span><span class="pcp-atual">${roundForUnit(atual, item.rendimento_unidade)} ${item.rendimento_unidade||''}</span></div>
+      <div class="pcp-sugestao${sugestao>0 ? '' : ' zero'}">${sugestao>0 ? `Produzir hoje: <strong>${sugestao} ${item.rendimento_unidade||''}</strong>` : '<strong>✓ Não precisa produzir hoje</strong>'}</div>
+      <div class="pcp-count-label">Estoque agora (toque − ou + para contar)</div>
       <div class="jar-steppers pcp-count-steppers">
-        <button class="step-btn minus" type="button">−</button>
-        <span class="muted">contagem</span>
-        <button class="step-btn plus" type="button">+</button>
+        <button class="step-btn minus" type="button" aria-label="Diminuir contagem de ${item.nome}">−</button>
+        <span class="pcp-atual">${roundForUnit(atual, item.rendimento_unidade)} ${item.rendimento_unidade||''}</span>
+        <button class="step-btn plus" type="button" aria-label="Aumentar contagem de ${item.nome}">+</button>
       </div>
-      <div class="pcp-card-row"><span class="muted">Mín / Máx</span><span>${roundForUnit(min, item.rendimento_unidade)} / ${roundForUnit(max, item.rendimento_unidade)}</span></div>
-      <div class="pcp-sugestao">Produzir hoje: <strong>${sugestao} ${item.rendimento_unidade||''}</strong></div>
+      <div class="pcp-card-row"><span class="muted">Mín ${roundForUnit(min, item.rendimento_unidade)} · Máx ${roundForUnit(max, item.rendimento_unidade)} ${item.rendimento_unidade||''}</span></div>
+      <div class="pcp-produzir-row">
+        <input type="number" class="num pcp-produzir-qtd" step="any" inputmode="decimal" value="${sugestao || ''}" placeholder="qtd" aria-label="Quantidade produzida de ${item.nome}">
+        <button class="primary pcp-produzir-btn" type="button">✅ Registrar produção</button>
+      </div>
       <details class="pcp-ajuste-toggle">
         <summary>Ajuste extra pra hoje (opcional)</summary>
-        <input type="number" class="num pcp-ajuste-input" step="any" value="${ajuste ?? ''}" placeholder="0">
+        <input type="number" class="num pcp-ajuste-input" step="any" inputmode="decimal" value="${ajuste ?? ''}" placeholder="0">
       </details>
-      <div class="pcp-produzir-row">
-        <input type="number" class="num pcp-produzir-qtd" step="any" value="${sugestao || ''}" placeholder="qtd">
-        <button class="primary pcp-produzir-btn" type="button">✅ Produzir</button>
-      </div>
     `;
     const minusBtn = card.querySelector('.step-btn.minus');
     const plusBtn = card.querySelector('.step-btn.plus');
@@ -1565,6 +1593,10 @@ document.getElementById('novoPrepBtn').addEventListener('click', async ()=>{
 });
 
 document.getElementById('searchBoxPcp').addEventListener('input', renderPcpBoard);
+document.getElementById('pcpFiltros').addEventListener('click', e=>{
+  const b = e.target.closest('button[data-f]'); if(!b) return;
+  pcpFiltro = b.dataset.f; renderPcpBoard(); requestAnimationFrame(updateStickyOffsets);
+});
 
 function renderAvisos(){
   const box = document.getElementById('avisosBox');
