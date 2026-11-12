@@ -179,16 +179,12 @@ function renderCubaSelect(){
     '<option value="sem">Sem cuba (o peso já é líquido)</option>';
   if([...s.options].some(o => o.value === atual)) s.value = atual;
 }
-function mostrarEscolha(aberta){
-  $('etqEscolha').classList.toggle('hidden', !aberta);
-  $('etqSelBar').classList.toggle('hidden', aberta);
-}
-function limparSel(){ E.sel = null; $('etqForm').classList.add('hidden'); mostrarEscolha(true); renderLista(); preview(); }
+function dicaEscolha(){ $('etqEscolhaDica').textContent = E.sel ? 'Para trocar, toque em outro prep:' : 'Toque no prep para montar a etiqueta acima.'; }
+function limparSel(){ E.sel = null; $('etqForm').classList.add('hidden'); dicaEscolha(); renderLista(); preview(); }
 function selecionar(p, manter){
   E.sel = p;
   if(!manter){ E.reqId = uuid(); E.copias = 1; $('etqFab').value = toInputSP(new Date()); $('etqLote').value = ''; $('etqCopias').textContent = '1'; $('etqPeso').value = ''; $('etqCuba').value = ''; }
   $('etqForm').classList.remove('hidden');
-  $('etqSelNome').textContent = p.nome;
   const r = E.regras[p.id], ok = pronto(r);
   $('etqSemValidade').classList.toggle('hidden', ok);
   $('etqSemValidade').textContent = r && !r.ativa && r.modo ? 'A etiqueta deste prep está desativada pelo admin.' : 'O admin ainda não definiu a validade deste prep. Peça para ele definir na aba Etiquetas › Validades.';
@@ -196,8 +192,8 @@ function selecionar(p, manter){
   $('etqErro').textContent = '';
   renderLista();
   preview();
-  // No celular a lista de preps é longa: recolhe a escolha e leva a etiqueta montada para a vista.
-  mostrarEscolha(false);
+  dicaEscolha();
+  // A lista de preps fica abaixo dos campos: ao escolher, leva a etiqueta montada para a vista.
   if(!manter){ // desconta o cabeçalho e as abas fixos (mais altos no celular)
     const fixo = document.querySelector('.tabs').getBoundingClientRect().bottom;
     window.scrollBy({ top:$('etqPreviewWrap').getBoundingClientRect().top - fixo - 8, behavior:'smooth' });
@@ -469,7 +465,6 @@ function subtab(nome){
 }
 document.querySelectorAll('.etq-sub button').forEach(b => b.addEventListener('click', () => subtab(b.dataset.sub)));
 $('etqBusca').addEventListener('input', renderLista);
-$('etqTrocarPrep').addEventListener('click', limparSel);
 $('etqPreps').addEventListener('click', e => { const b = e.target.closest('.etq-prep'); if(!b) return; const p = E.preps.find(x => x.id === b.dataset.id); if(p) selecionar(p); });
 $('etqFab').addEventListener('input', mudouCampo);
 $('etqLote').addEventListener('input', mudouCampo);
