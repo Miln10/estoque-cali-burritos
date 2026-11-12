@@ -522,7 +522,8 @@
 <script>
 const SUPABASE_URL = "https://cfyfvmeggspahovblitr.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmeWZ2bWVnZ3NwYWhvdmJsaXRyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ3MzA2MTYsImV4cCI6MjEwMDMwNjYxNn0.DUJ97JnPRiK2or0Ii0Lpw2FfrSUXWPj7706mf6vULsY";
-const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { flowType: 'implicit' } });
+// Login fica guardado no aparelho e é renovado sozinho; só termina em "Sair" ou se os dados do navegador forem apagados.
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { flowType: 'implicit', persistSession: true, autoRefreshToken: true } });
 
 let insumos = [];
 let currentUser = null;
@@ -1717,7 +1718,11 @@ function applyRoleUI(){
 }
 
 async function afterLogin(){
-  const { data: { user } } = await db.auth.getUser();
+  // Usa a sessão guardada no aparelho; só consulta o servidor se ela não trouxer o usuário.
+  const { data: { session } } = await db.auth.getSession();
+  let user = session && session.user;
+  if(!user){ const r = await db.auth.getUser(); user = r.data && r.data.user; }
+  if(!user){ showScreen('login'); return; }
   currentUser = user;
   currentRole = await fetchRole(user.id);
   document.getElementById('userLabel').textContent = (currentUser.email||'') + (currentRole==='admin' ? ' · admin' : ' · funcionário');
@@ -1733,8 +1738,24 @@ document.getElementById('loginBtn').addEventListener('click', async ()=>{
   errEl.style.color = 'var(--bad)';
   errEl.textContent = '';
   if(!email || !password){ errEl.textContent = 'Preencha email e senha.'; return; }
-  const { error } = await db.auth.signInWithPassword({ email, password });
-  if(error){ errEl.textContent = 'Email ou senha incorretos.'; return; }
+  const btn = document.getElementById('loginBtn');
+  if(btn.disabled) return;
+  btn.disabled = true; btn.textContent = 'Entrando…';
+  try{
+    const { error } = await db.auth.signInWithPassword({ email, password });
+    if(error){
+      const semRede = /fetch|network/i.test(error.message||'');
+      errEl.textContent = semRede ? 'Sem conexão. Confira a internet e tente de novo.' : 'Email ou senha incorretos.';
+      return;
+    }
+    document.getElementById('loginPassword').value = '';
+    await afterLogin();   // abre o app na hora, sem precisar recarregar a página
+  }catch(e){
+    errEl.textContent = 'Não consegui entrar. Tente de novo.';
+    console.error(e);
+  }finally{
+    btn.disabled = false; btn.textContent = 'Entrar';
+  }
 });
 document.querySelectorAll('.pw-toggle').forEach(btn=>{
   btn.addEventListener('click', ()=>{
@@ -1781,6 +1802,8 @@ document.getElementById('logoutBtn').addEventListener('click', async ()=>{
 
 db.auth.onAuthStateChange((event)=>{
   if(event === 'PASSWORD_RECOVERY'){ showScreen('setPassword'); }
+  // Sessão encerrada (Sair em outra aba ou acesso revogado): volta ao login em vez de ficar numa tela que não salva.
+  if(event === 'SIGNED_OUT' && currentUser){ currentUser = null; currentRole = null; showScreen('login'); }
 });
 
 (async function initAuth(){
